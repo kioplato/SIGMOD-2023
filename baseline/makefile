@@ -12,4 +12,4 @@ knng : knn-construction.cc
 	$(CC) $(LFLAGS) knn-construction.cc -o $@
 
 clean :
-	rm -f knng
+	rm knng
