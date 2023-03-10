@@ -7,17 +7,33 @@
 #include "assert.h"
 #include "io.h"
 
+#include "point.hpp"
+
 using namespace std;
 
-#define _INT_MAX 2147483640
-
 vector<uint32_t> CalculateOneKnn(const vector<vector<float>> &data,
-		const vector<uint32_t> &sample_indexes, const uint32_t id)
+		const vector<uint32_t> &sample_indexes, const uint32_t id);
+
+vector<uint32_t> knn_of_point(const point_t& point, uint32_t k)
 {
 	// Max heap. This way we know which is the furthest point from @id.
-	priority_queue<pair<float, uint32_t>> top_candidates;
+	priority_queue<pair<double, uint32_t>> nearest_neighbors;
 
-	double lower_bound = _INT_MAX;
+	/*
+	 * Initialize the @nearest_neighbors of @point by adding a
+	 * point from its cluster, but be careful, ignore itself.
+	 */
+
+	// The @point's cluster.
+	const vector<point_t>& candidates = point.cluster().members();
+
+	size_t index = 0;
+
+	if (candidates[index].id() != point.id()) {
+		nearest_neighbors.push(candidates[index]);
+	} else {
+		neare...
+	}
 
 	// Iterate over samples.
 	for (unsigned i = 0; i < sample_indexes.size(); i++) {

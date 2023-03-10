@@ -5,6 +5,8 @@
 
 using namespace std;
 
+class cluster_t;
+
 /* Class storing a 2-dimensional point. */
 class point_t {
 	// The identifier of the point.
@@ -14,6 +16,9 @@ class point_t {
 	// The id of the cluster the point belongs to.
 	// A cluster with _cluster_id = 0 means its undefined.
 	uint32_t _cluster_id = 0;
+
+	// Pointer to the cluster the point belongs.
+	const cluster_t& _cluster;
 
 	// The coordinates of the point in the n-dimensions.
 	vector<double> _coordinates;
@@ -36,6 +41,10 @@ public:
 
 	// Set the cluster id of the point.
 	void cluster_id(uint32_t id);
+
+	const cluster_t& cluster() const;
+	void cluster(const cluster_t& cluster);
+
 
 	// Get the i-th dimension's value.
 	double operator[] (size_t index) const;
