@@ -13,6 +13,7 @@ uint32_t cluster_t::id() const
 
 void cluster_t::add_member(const point_t& point)
 {
+	#pragma omp critical
 	_points.push_back(point);
 	_points.back().cluster_id(_cluster_id);
 }
@@ -44,7 +45,7 @@ const point_t& cluster_t::centroid() const
 	return _centroid;
 }
 
-void cluster_t::reset_members()
+void cluster_t::clear_members()
 {
 	_points.clear();
 }
@@ -61,16 +62,17 @@ const vector<point_t>& cluster_t::members() const
 
 void cluster_t::recenter()
 {
+	// We don't have any points to use for the computation of centroid.
 	if (_points.empty()) return;
 
-	size_t n_dims = _points.front.size();
+	size_t n_dims = _points.front().n_dims();
 
-	point_t new_centroid;
+	point_t new_centroid(n_dims);
 
 	for (size_t c_dim = 0; c_dim < n_dims; ++c_dim) {
 		double dim_value = 0.0;
 
-#pragma omp parallel for reduction(+: dim_value)
+		#pragma omp parallel for reduction(+: dim_value)
 		for (const auto& point : _points)
 			dim_value += point[c_dim];
 

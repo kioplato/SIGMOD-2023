@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cmath>
-#include "kmeans.hpp"
+#include "point.hpp"
 
 /**
  * @brief Compute the euclidean distance of two points.
