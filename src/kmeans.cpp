@@ -1,8 +1,6 @@
-#include <omp.h>
 #include <cstdint>
-#include <cmath>
 #include <vector>
-#include <limits>
+#include <algorithm>
 #include "kmeans.hpp"
 
 using namespace std;
@@ -81,7 +79,7 @@ void kmeans_t::run(vector<point_t>& points)
 	// The number of points we need to cluster.
 	_n_points = points.size();
 	// The n-dimensional space points live.
-	_n_dims = points.front().size();
+	_n_dims = points.front().n_dims();
 
 	/*
 	 * Initialize clusters.
@@ -110,7 +108,7 @@ void kmeans_t::run(vector<point_t>& points)
 		// Add point to cluster.
 		cluster.add_member(points[index]);
 		// Assign cluster to point. The point now belongs to a cluster.
-		points[index].set_cluster(c_cluster);
+		points[index].cluster_id(c_cluster);
 
 		// Mark the used point's ID.
 		used_points.push_back(index);
@@ -136,8 +134,8 @@ void kmeans_t::run(vector<point_t>& points)
 		#pragma omp parallel for reduction(&&: done)
 		for (point_t& point : points)
 		{
-			uint32_t curr_cluster_id = point.get_cluster();
-			uint32_t best_cluster_id = find_nearest_cluster(point);
+			uint32_t curr_cluster_id = point.cluster_id();
+			uint32_t best_cluster_id = _find_nearest_cluster_id(point);
 
 			// Update the point's cluster.
 			if (curr_cluster_id == best_cluster_id)
@@ -167,13 +165,13 @@ void kmeans_t::run(vector<point_t>& points)
 			// Clear all existing clusters.
 			#pragma omp for
 			for (auto& cluster : _clusters)
-				cluster.reset_members();
+				cluster.clear_members();
 
 			// Add each point to the cluster it belongs.
 			#pragma omp for
 			for (const auto& point : points)
 				// Cluster's index is its id - 1.
-				clusters[point.get_cluster() - 1].add_member(point);
+				_clusters[point.cluster_id() - 1].add_member(point);
 
 			#pragma omp for
 			for (cluster_t& curr_cluster : _clusters)

@@ -34,10 +34,11 @@ public:
 	// Get the id of the cluster that the point belongs.
 	uint32_t cluster_id() const;
 
+	// Set the cluster id of the point.
+	void cluster_id(uint32_t id);
+
 	// Get the i-th dimension's value.
 	double operator[] (size_t index) const;
 	double& operator[] (size_t index);
 
-	// Set the cluster id of the point.
-	void cluster_id(uint32_t id);
 };
