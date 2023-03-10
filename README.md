@@ -9,3 +9,6 @@ Team name: jfpk
 # Solution
 
 TODO
+
+## Good reads
+https://en.wikibooks.org/wiki/Algorithms/Distance_approximations
