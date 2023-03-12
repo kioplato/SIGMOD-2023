@@ -5,13 +5,11 @@
 using namespace std;
 
 /*
- * @brief Find the k nearest neighbors of the @point from the cluster it belongs.
+ * @brief Calculate the knng of the @points.
  *
- * @param point The point to find its k nearest neighbors.
- * @param k How many nearest neighbors to find.
+ * The knng is stored as a vector where each item is the point with ID the
+ * same as its index. Its nearest neighbors are stored as a nested vector.
  *
- * @return Vector with k points, which are the knn of @point in its cluster.
+ * @param points The points to use for the knng construction.
  */
-vector<uint32_t> knn_of_point(const point_t& point, uint32_t k);
-
-vector<vector<>>
+vector<vector<uint32_t>> create_knng(const vector<point_t>& points, uint32_t k);

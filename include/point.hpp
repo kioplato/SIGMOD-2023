@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <cstdint>
 #include <vector>
 
@@ -18,17 +19,17 @@ class point_t {
 	uint32_t _cluster_id = 0;
 
 	// Pointer to the cluster the point belongs.
-	const cluster_t& _cluster;
+	const cluster_t* _cluster;
 
 	// The coordinates of the point in the n-dimensions.
-	vector<double> _coordinates;
+	vector<float> _coordinates;
 
 public:
 	// Initialize the point at the origin of the n_dims-dimensional space.
 	point_t(size_t n_dims);
 
 	// Initialize the point with its id and exact coordinates.
-	point_t(uint32_t id, const vector<double>& coordinates);
+	point_t(uint32_t id, const vector<float> coordinates);
 
 	// Get the number of dimensions that point lives in.
 	size_t n_dims() const;
@@ -42,12 +43,13 @@ public:
 	// Set the cluster id of the point.
 	void cluster_id(uint32_t id);
 
-	const cluster_t& cluster() const;
-	void cluster(const cluster_t& cluster);
-
+	const cluster_t* cluster() const;
+	void cluster(const cluster_t* cluster);
 
 	// Get the i-th dimension's value.
-	double operator[] (size_t index) const;
-	double& operator[] (size_t index);
+	float operator[] (size_t index) const;
+	float& operator[] (size_t index);
 
+	// Print the point to stdout.
+	void print(ofstream ofs) const;
 };

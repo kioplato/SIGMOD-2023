@@ -4,17 +4,23 @@
 #include <string>
 #include <vector>
 
-#include "assert.h"
-#include "io.h"
-
+#include "knng.hpp"
 #include "point.hpp"
+#include "cluster.hpp"
+#include "helpers.hpp"
 
 using namespace std;
 
-vector<uint32_t> CalculateOneKnn(const vector<vector<float>> &data,
-		const vector<uint32_t> &sample_indexes, const uint32_t id);
-
-vector<uint32_t> knn_of_point(const point_t& point, uint32_t k)
+/*
+ * @brief Find the k nearest neighbors of the @point from the cluster it belongs.
+ *
+ * @param point The point to find its k nearest neighbors.
+ * @param k How many nearest neighbors to find.
+ *
+ * @return Vector with k points, which are the knn of @point in its cluster.
+ */
+static inline vector<uint32_t>
+knn_of_point(const point_t& point, uint32_t k)
 {
 	// Max heap. This way we know which is the furthest point from @id.
 	priority_queue<pair<double, uint32_t>> nearest_neighbors;
@@ -25,86 +31,53 @@ vector<uint32_t> knn_of_point(const point_t& point, uint32_t k)
 	 */
 
 	// The @point's cluster.
-	const vector<point_t>& candidates = point.cluster().members();
+	const vector<point_t>& candidates = point.cluster()->members();
 
-	size_t index = 0;
+	size_t c_cand = 0;
 
-	if (candidates[index].id() != point.id()) {
-		nearest_neighbors.push(candidates[index]);
-	} else {
-		neare...
-	}
+	for (; c_cand < candidates.size(); ++c_cand) {
+		if (candidates[c_cand].id() == point.id())
+			continue;
 
-	// Iterate over samples.
-	for (unsigned i = 0; i < sample_indexes.size(); i++) {
-		// Get the current sample index in @data.
-		uint32_t sample_id = sample_indexes[i];
+		const point_t& candidate = candidates[c_cand];
+		double distance = euclidean_distance_aprox(point, candidate);
 
-		// Skip itself. A point can't have itself as a neighbor.
-		if (id == sample_id) continue;
-
-		// Calculate the distance between @id and @sample_id.
-		double dist = EuclideanDistance(data[id], data[sample_id]);
-
-		// Only keep the top 100 nearest neighbors. k=100.
-		if (top_candidates.size() < 100 || dist < lower_bound) {
-			top_candidates.push(std::make_pair(dist, sample_id));
-			if (top_candidates.size() > 100)
-				top_candidates.pop();
-
-			lower_bound = top_candidates.top().first;
+		if (nearest_neighbors.size() < k)
+			nearest_neighbors.push({distance, candidate.id()});
+		else if (nearest_neighbors.top().first > distance) {
+			nearest_neighbors.pop();
+			nearest_neighbors.push({distance, candidate.id()});
 		}
 	}
 
 	// Write the nns of the current point @id.
-	vector<uint32_t> knn; knn.reserve(100);
-	while (!top_candidates.empty()) {
-		knn.emplace_back(top_candidates.top().second);
-		top_candidates.pop();
+	vector<uint32_t> knn;
+	knn.reserve(100);
+
+	while (!nearest_neighbors.empty()) {
+		knn.push_back(nearest_neighbors.top().second);
+		nearest_neighbors.pop();
 	}
-	reverse(knn.begin(), knn.end());
+
+	/*
+	 * @nearest_neighbors is max heap. The @knn contains the nearest
+	 * neighbors from within the cluster but in reverse order i.e. the first
+	 * neighbor is the furstest one from the k neighbors. We could reverse
+	 * @knn but it's not mandatory because recall is the the true number of
+	 * nearest neighbors in @knn despite their order.
+	 */
 
 	return knn;
 }
 
-void ConstructKnng(const vector<vector<float>> &data,
-		const vector<uint32_t> &sample_indexes,
-		vector<vector<uint32_t>> &knng)
+vector<vector<uint32_t>> create_knng(const vector<point_t>& points, uint32_t k)
 {
-	knng.resize(data.size());
-#pragma omp parallel for
-	for (uint32_t n = 0; n < knng.size(); ++n)
-		knng[n] = CalculateOneKnn(data, sample_indexes, n);
-}
-
-int main(int argc, char **argv)
-{
-	string source_path = "dummy-data.bin";
-
-	// Also accept other path for source data.
-	if (argc > 1)
-		source_path = string(argv[1]);
-
-	// Read data points.
-	vector<vector<float>> nodes;
-	ReadBin(source_path, nodes);
-
-	// Sample points for greedy search.
-	std::default_random_engine rd;
-	std::mt19937 gen(rd());  // Mersenne twister MT19937.
-	vector<uint32_t> sample_indexes(nodes.size());
-	iota(sample_indexes.begin(), sample_indexes.end(), 0);
-	shuffle(sample_indexes.begin(), sample_indexes.end(), gen);
-	// For evaluation dataset, keep more points.
-	if (sample_indexes.size() > 100000)
-		sample_indexes.resize(100000);
-
-	// Knng constuction.
 	vector<vector<uint32_t>> knng;
-	ConstructKnng(nodes, sample_indexes, knng);
+	knng.reserve(points.size());
 
-	// Save to ouput.bin file.
-	SaveKNNG(knng);
+	#pragma omp parallel for
+	for (size_t c_point = 0; c_point < knng.size(); ++c_point)
+		knng.push_back(knn_of_point(points[c_point], k));
 
-	return 0;
+	return knng;
 }
