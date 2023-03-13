@@ -85,14 +85,15 @@ knn_of_point(const point_t& point, uint32_t k)
 	return knn;
 }
 
-vector<vector<uint32_t>> create_knng(vector<point_t>& points, uint32_t k)
+vector<vector<uint32_t>> create_knng(vector<point_t>& points, uint32_t k,
+		uint32_t n_clusters, uint32_t n_iters)
 {
 	/*
 	 * Run K-Means clustering. Using this method we exhaustively search
 	 * for the k nearest neighbors of a point in the cluster it belongs.
 	 */
 	//cout << "In create_knng: Running K-Means." << endl;
-	kmeans_t kmeans(2, 100, points);
+	kmeans_t kmeans(n_clusters, n_iters, points);
 	kmeans.run();
 	//cout << "In create_knng: Done K-Means." << endl;
 

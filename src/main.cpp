@@ -20,25 +20,29 @@ int main(int argc, char **argv)
 	omp_set_num_threads(omp_get_num_procs());
 	// TODO: Set OMP_PROC_BIND env var.
 
-	// The default path of the dataset.
+	// The default hyperparameters of the program.
 	string dataset_path = "datasets/dummy-data.bin";
+	uint32_t n_clusters = 2;  // # of clusters to create.
+	uint32_t n_iters = 100;   // # of iterations of K-Means.
 
 	// Also accept other path for source data.
 	if (argc > 1) dataset_path = string(argv[1]);
+	if (argc > 2) n_clusters = atoll(argv[2]);
 
 	cout << "Dataset path = " << dataset_path << endl;
+	cout << "# Clusters = " << n_clusters << endl;
 
-	// Read dataset points.
-	vector<point_t> points = read_dataset(dataset_path, 100);
-	//cout << "Read " << points.size() << " points." << endl;
-
+	// The number of neighbors to find per point.
 	const uint32_t k = 100;
 
+	// Read dataset points.
+	vector<point_t> points = read_dataset(dataset_path, k);
+
 	// Construct the knng.
-	vector<vector<uint32_t>> knng = create_knng(points, k);
+	vector<vector<uint32_t>> knng = create_knng(points, k, n_clusters, n_iters);
 
 	// Save to ouput.bin file.
-	write_knng(knng, 100, "output.bin");
+	write_knng(knng, k, "output.bin");
 
 	return 0;
 }
