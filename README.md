@@ -10,5 +10,13 @@ Team name: jfpk
 
 TODO
 
-## Good reads
-https://en.wikibooks.org/wiki/Algorithms/Distance_approximations
+## Ideas
+Baseline uses euclidean distance comparison only version. This version does
+not include a square root over the result. More [here][1].
+
+Approximate clustering exists. Can we implement it? Does it offer better
+tradeoff over recall vs construction time?
+
+Plot the recall score and runtime for various number of clusters.
+
+[1]: https://en.wikibooks.org/wiki/Algorithms/Distance_approximations
