@@ -6,9 +6,16 @@ Team name: jfpk
 
 # Solution
 
-TODO
+Cluster points and then exhaustively search each point's cluster for its 100
+nearest neighbors.
 
-## Ideas
+# Runtimes
+
+| Dataset        | # Clusters | Runtime local (secs) | Runtime eval (secs)    |
+|----------------|------------|----------------------|------------------------|
+| dummy-data.bin | 2          | 1.250 secs           | Evaluation done on 10m |
+
+# Ideas
 Baseline uses euclidean distance comparison only version. This version does
 not include a square root over the result. More [here][2].
 
