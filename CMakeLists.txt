@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9)
 # The compiler to use.
 set(CMAKE_CXX_COMPILER "g++")
 # Get the best optimizations available.
-set(CMAKE_CXX_FLAGS "--std=c++17 -O3 -fopenmp")
+set(CMAKE_CXX_FLAGS "--std=c++17 -O3 -march=native -mtune=native -fopenmp")
 
 # Specify default build type to "Release".
 set(CMAKE_BUILD_TYPE Release)
