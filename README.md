@@ -39,6 +39,8 @@ The eval machine evaluates a similar private dataset of equal cardinality.
 | 10.000     | 12         | ?      | 0.550 secs    | Evaluation done on 10m |
 | 10.000     | 13         | ?      | 0.475 secs    | Evaluation done on 10m |
 | 10.000     | 14         | ?      | 0.420 secs    | Evaluation done on 10m |
+| 10.000.000 | 8          | NaN    | ?             | TLE                    |
+| 10.000.000 | 32         | NaN    | ?             | TLE                    |
 
 # Ideas
 Baseline uses euclidean distance comparison only version. This version does
