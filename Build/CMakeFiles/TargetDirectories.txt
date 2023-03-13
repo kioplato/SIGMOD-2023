@@ -1,3 +1,0 @@
-/home/kioplato/Desktop/SIGMOD-2023/Build/CMakeFiles/knng.dir
-/home/kioplato/Desktop/SIGMOD-2023/Build/CMakeFiles/edit_cache.dir
-/home/kioplato/Desktop/SIGMOD-2023/Build/CMakeFiles/rebuild_cache.dir
