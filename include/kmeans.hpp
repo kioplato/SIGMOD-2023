@@ -15,22 +15,30 @@ class kmeans_t {
 	// The number of iterations to perform. May converge faster.
 	uint32_t _n_iters;
 
-	// The number of dimensions of each point.
-	uint32_t _n_dims;
-
-	// The number of points in the dataset.
-	uint32_t _n_points;
+	// All the points used in the clustering.
+	vector<point_t>& _points;
 
 	// The clusters.
 	vector<cluster_t> _clusters;
 
-	// Find the nearest cluster to the specified point @assortee.
-	uint32_t _find_nearest_cluster_id(const point_t& assortee) const;
-
 public:
 	// Initialize with the number of clusters and number of iterations.
-	kmeans_t(uint32_t n_clusters, uint32_t n_iters);
+	kmeans_t(uint32_t n_clusters, uint32_t n_iters, vector<point_t>& points);
 
 	// Perform k-means clustering.
-	void run(vector<point_t>& points);
+	void run();
+
+	// Print the clusters.
+	void print_clusters(ostream& outstream, string indent = "") const;
+
+	/*
+	 * @brief Print a vector of @points to the specified stream @ofs.
+	 *
+	 * @param ofs Where to print the point.
+	 * @param points The points to print.
+	 * @param indent The indentation level to print the point.
+	 *
+	 * @return None.
+	 */
+	void print_points(ostream& outstream, string indent = "") const;
 };

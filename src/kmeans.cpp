@@ -5,52 +5,6 @@
 
 using namespace std;
 
-/** Private functions. ********************************************************/
-
-/*
- * @brief Find the nearest cluster of @assortee.
- *
- * @param assortee The point to find its nearest cluster from @_clusters.
- *
- * @return The ID of the @assortee's nearest cluster.
- */
-uint32_t kmeans_t::_find_nearest_cluster_id(const point_t& assortee) const
-{
-	// Initialize the best cluster.
-	double best_distance = euclidean_distance(_clusters[0].centroid(), assortee);
-	uint32_t best_cluster_id = _clusters[0].id();
-
-	// Iterate over the rest clusters and find the nearest one.
-	#pragma omp parallel
-	{
-		double best_distance_thr = best_distance;
-		uint32_t best_cluster_id_thr = best_cluster_id;
-
-		#pragma omp for
-		for (const auto& cluster : _clusters)
-		{
-			double distance = euclidean_distance(cluster.centroid(), assortee);
-
-			if (distance < best_distance_thr)
-			{
-				best_distance_thr = distance;
-				best_cluster_id_thr = cluster.id();
-			}
-		}
-
-		#pragma omp critical
-		if (best_distance_thr < best_distance)
-		{
-			best_distance = best_distance_thr;
-			best_cluster_id = best_cluster_id_thr;
-		}
-	}
-
-	return best_cluster_id;
-}
-
-/** Public functions **********************************************************/
-
 /*
  * @brief Initialize K-Means algorithm with the number of
  * clusters to create and the number of iterations to perform.
@@ -58,10 +12,54 @@ uint32_t kmeans_t::_find_nearest_cluster_id(const point_t& assortee) const
  * @param n_clusters The number of clusters to create.
  * @param n_iters The maximum number of iterations to perform.
  */
-kmeans_t::kmeans_t(uint32_t n_clusters, uint32_t n_iters)
-: _n_clusters(n_clusters), _n_iters(n_iters)
+kmeans_t::kmeans_t(uint32_t n_clusters, uint32_t n_iters, vector<point_t>& points)
+: _n_clusters(n_clusters), _n_iters(n_iters), _points(points)
 {
 	// Empty.
+}
+
+/*
+ * @brief Find the nearest cluster of @assortee.
+ *
+ * @param clusters The cluster to search.
+ * @param assortee The point to find its nearest cluster from @_clusters.
+ *
+ * @return The memory address of the @assortee's nearest cluster.
+ */
+static inline const cluster_t*
+_find_nearest_cluster(const vector<cluster_t>& clusters, const point_t& assortee)
+{
+	// Initialize the best cluster.
+	double best_distance = euclidean_distance_aprox(clusters[0].centroid(), assortee);
+	const cluster_t* best_cluster = &clusters[0];
+
+	// Iterate over the rest clusters and find the nearest one.
+	#pragma omp parallel
+	{
+		double best_distance_thr = best_distance;
+		const cluster_t* best_cluster_thr = best_cluster;
+
+		#pragma omp for nowait
+		for (const cluster_t& cluster : clusters)
+		{
+			double distance = euclidean_distance_aprox(cluster.centroid(), assortee);
+
+			if (distance < best_distance_thr)
+			{
+				best_distance_thr = distance;
+				best_cluster_thr = &cluster;
+			}
+		}
+
+		#pragma omp critical
+		if (best_distance_thr < best_distance)
+		{
+			best_distance = best_distance_thr;
+			best_cluster = best_cluster_thr;
+		}
+	}
+
+	return best_cluster;
 }
 
 /*
@@ -74,12 +72,12 @@ kmeans_t::kmeans_t(uint32_t n_clusters, uint32_t n_iters)
  *
  * @return Void. Each point gets assigned to a cluster.
  */
-void kmeans_t::run(vector<point_t>& points)
+void kmeans_t::run()
 {
 	// The number of points we need to cluster.
-	_n_points = points.size();
-	// The n-dimensional space points live.
-	_n_dims = points.front().n_dims();
+	size_t n_points = _points.size();
+	// The n-dimensional space the points live.
+	size_t n_dims = _points.front().coords().size();
 
 	/*
 	 * Initialize clusters.
@@ -97,26 +95,36 @@ void kmeans_t::run(vector<point_t>& points)
 	// Iterate over the cluster IDs and initialize each cluster.
 	for (uint32_t c_cluster = 1; c_cluster <= _n_clusters;) {
 		// Pick a random point to initialize current cluster.
-		uint32_t index = rand() % _n_points;
+		uint32_t index = rand() % n_points;
 
 		// Retry if the same point has been used as centroid for another cluster.
 		if (find(used_points.begin(), used_points.end(), index) != used_points.end())
 			continue;
 
 		// Create a cluster with this point as centroid.
-		cluster_t cluster(c_cluster, points[index]);
-		// Add point to cluster.
-		cluster.add_member(points[index]);
-		// Assign cluster to point. The point now belongs to a cluster.
-		points[index].cluster_id(c_cluster);
-
-		// Mark the used point's ID.
-		used_points.push_back(index);
+		cluster_t cluster(c_cluster, _points[index]);
 		// Store the cluster in the vector with the other clusters.
 		_clusters.push_back(cluster);
 
+		// Add point to cluster.
+		cluster.add_point(_points[index]);
+		// Assign cluster to point. The point now belongs to a cluster.
+		_points[index].cluster(&_clusters[c_cluster - 1]);
+
+		// Mark the used point's ID.
+		used_points.push_back(index + 1);
+
+		//cout << "Printing the cluster initializer point:" << endl;
+		//_points[index].print(cerr);
+
 		++c_cluster;
 	}
+
+	//cout << "Initialized clusters with these point IDs:" << endl;
+	//for (uint32_t id : used_points)
+	//	cout << id << endl;
+
+	//cout << "Number of clusters in the _clusters vector = " << _clusters.size() << endl;
 
 	/*
 	 * Start improving the clusters and update each point's cluster.
@@ -127,21 +135,26 @@ void kmeans_t::run(vector<point_t>& points)
 
 	for (uint32_t c_iter = 0; c_iter < _n_iters; ++c_iter)
 	{
+		//cout << "K-Means iteration = " << c_iter << endl;
+
 		// We stop when we can no longer improve any cluster.
 		bool done = true;
 
 		// Add all points to their nearest cluster.
 		#pragma omp parallel for reduction(&&: done)
-		for (point_t& point : points)
+		for (point_t& point : _points)
 		{
-			uint32_t curr_cluster_id = point.cluster_id();
-			uint32_t best_cluster_id = _find_nearest_cluster_id(point);
+			uint32_t curr_cluster_id = (point.cluster()) ? point.cluster()->id() : 0;
+			const cluster_t* best_cluster = _find_nearest_cluster(_clusters, point);
 
-			// Update the point's cluster.
-			if (curr_cluster_id == best_cluster_id)
+			//printf("Best cluster ID = %d\n", best_cluster->id());
+
+			// Update the point's cluster if the current one isn't the best.
+			if (curr_cluster_id == best_cluster->id())
 				continue;
 
-			point.cluster_id(best_cluster_id);
+			//cout << "here" << endl;
+			point.cluster(best_cluster);
 
 			// TODO: Remove point from @curr_cluster_id and add it
 			// to @best_cluster_id. A race could occur where two
@@ -165,17 +178,30 @@ void kmeans_t::run(vector<point_t>& points)
 			// Clear all existing clusters.
 			#pragma omp for
 			for (auto& cluster : _clusters)
-				cluster.clear_members();
+				cluster.clear();
 
 			// Add each point to the cluster it belongs.
 			#pragma omp for
-			for (const auto& point : points)
+			for (const auto& point : _points)
 				// Cluster's index is its id - 1.
-				_clusters[point.cluster_id() - 1].add_member(point);
+				_clusters[point.cluster()->id() - 1].add_point(point);
 
+			// Recenter clusters because they contain new points.
 			#pragma omp for
-			for (cluster_t& curr_cluster : _clusters)
-				curr_cluster.recenter();
+			for (auto& cluster : _clusters)
+				cluster.recenter();
 		}
 	}
+}
+
+void kmeans_t::print_clusters(ostream& outstream, string indent) const
+{
+	for (const cluster_t& cluster : _clusters)
+		cluster.print(outstream, indent);
+}
+
+void kmeans_t::print_points(ostream& outstream, string indent) const
+{
+	for (const point_t& point : _points)
+		point.print(outstream, indent);
 }

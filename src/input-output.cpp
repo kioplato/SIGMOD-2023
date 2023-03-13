@@ -24,8 +24,8 @@ vector<point_t> read_dataset(const string& path, const uint32_t& n_dims)
 	uint32_t c_point = 0;
 
 	// Read the points.
-	while (ifs.read((char*)buffer.data(), n_dims * sizeof(float)))
-		points.push_back(point_t(c_point, buffer));
+	while (ifs.read((char*)buffer.data(), 100 * sizeof(float)))
+		points.push_back(point_t(++c_point, buffer));
 
 	ifs.close();
 

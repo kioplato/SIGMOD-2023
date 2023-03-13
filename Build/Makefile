@@ -153,29 +153,29 @@ src/cluster.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/cluster.cpp.s
 .PHONY : src/cluster.cpp.s
 
-src/helpers.o: src/helpers.cpp.o
-.PHONY : src/helpers.o
+src/input-output.o: src/input-output.cpp.o
+.PHONY : src/input-output.o
 
 # target to build an object file
-src/helpers.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/helpers.cpp.o
-.PHONY : src/helpers.cpp.o
+src/input-output.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/input-output.cpp.o
+.PHONY : src/input-output.cpp.o
 
-src/helpers.i: src/helpers.cpp.i
-.PHONY : src/helpers.i
+src/input-output.i: src/input-output.cpp.i
+.PHONY : src/input-output.i
 
 # target to preprocess a source file
-src/helpers.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/helpers.cpp.i
-.PHONY : src/helpers.cpp.i
+src/input-output.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/input-output.cpp.i
+.PHONY : src/input-output.cpp.i
 
-src/helpers.s: src/helpers.cpp.s
-.PHONY : src/helpers.s
+src/input-output.s: src/input-output.cpp.s
+.PHONY : src/input-output.s
 
 # target to generate assembly for a file
-src/helpers.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/helpers.cpp.s
-.PHONY : src/helpers.cpp.s
+src/input-output.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/knng.dir/build.make CMakeFiles/knng.dir/src/input-output.cpp.s
+.PHONY : src/input-output.cpp.s
 
 src/kmeans.o: src/kmeans.cpp.o
 .PHONY : src/kmeans.o
@@ -285,9 +285,9 @@ help:
 	@echo "... src/cluster.o"
 	@echo "... src/cluster.i"
 	@echo "... src/cluster.s"
-	@echo "... src/helpers.o"
-	@echo "... src/helpers.i"
-	@echo "... src/helpers.s"
+	@echo "... src/input-output.o"
+	@echo "... src/input-output.i"
+	@echo "... src/input-output.s"
 	@echo "... src/kmeans.o"
 	@echo "... src/kmeans.i"
 	@echo "... src/kmeans.s"

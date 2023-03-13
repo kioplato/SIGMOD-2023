@@ -83,19 +83,19 @@ CMakeFiles/knng.dir/src/cluster.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/knng.dir/src/cluster.cpp.s"
 	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kioplato/Desktop/SIGMOD-2023/src/cluster.cpp -o CMakeFiles/knng.dir/src/cluster.cpp.s
 
-CMakeFiles/knng.dir/src/helpers.cpp.o: CMakeFiles/knng.dir/flags.make
-CMakeFiles/knng.dir/src/helpers.cpp.o: /home/kioplato/Desktop/SIGMOD-2023/src/helpers.cpp
-CMakeFiles/knng.dir/src/helpers.cpp.o: CMakeFiles/knng.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/kioplato/Desktop/SIGMOD-2023/Build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/knng.dir/src/helpers.cpp.o"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/knng.dir/src/helpers.cpp.o -MF CMakeFiles/knng.dir/src/helpers.cpp.o.d -o CMakeFiles/knng.dir/src/helpers.cpp.o -c /home/kioplato/Desktop/SIGMOD-2023/src/helpers.cpp
+CMakeFiles/knng.dir/src/input-output.cpp.o: CMakeFiles/knng.dir/flags.make
+CMakeFiles/knng.dir/src/input-output.cpp.o: /home/kioplato/Desktop/SIGMOD-2023/src/input-output.cpp
+CMakeFiles/knng.dir/src/input-output.cpp.o: CMakeFiles/knng.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/kioplato/Desktop/SIGMOD-2023/Build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/knng.dir/src/input-output.cpp.o"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/knng.dir/src/input-output.cpp.o -MF CMakeFiles/knng.dir/src/input-output.cpp.o.d -o CMakeFiles/knng.dir/src/input-output.cpp.o -c /home/kioplato/Desktop/SIGMOD-2023/src/input-output.cpp
 
-CMakeFiles/knng.dir/src/helpers.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/knng.dir/src/helpers.cpp.i"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kioplato/Desktop/SIGMOD-2023/src/helpers.cpp > CMakeFiles/knng.dir/src/helpers.cpp.i
+CMakeFiles/knng.dir/src/input-output.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/knng.dir/src/input-output.cpp.i"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kioplato/Desktop/SIGMOD-2023/src/input-output.cpp > CMakeFiles/knng.dir/src/input-output.cpp.i
 
-CMakeFiles/knng.dir/src/helpers.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/knng.dir/src/helpers.cpp.s"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kioplato/Desktop/SIGMOD-2023/src/helpers.cpp -o CMakeFiles/knng.dir/src/helpers.cpp.s
+CMakeFiles/knng.dir/src/input-output.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/knng.dir/src/input-output.cpp.s"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kioplato/Desktop/SIGMOD-2023/src/input-output.cpp -o CMakeFiles/knng.dir/src/input-output.cpp.s
 
 CMakeFiles/knng.dir/src/kmeans.cpp.o: CMakeFiles/knng.dir/flags.make
 CMakeFiles/knng.dir/src/kmeans.cpp.o: /home/kioplato/Desktop/SIGMOD-2023/src/kmeans.cpp
@@ -156,7 +156,7 @@ CMakeFiles/knng.dir/src/point.cpp.s: cmake_force
 # Object files for target knng
 knng_OBJECTS = \
 "CMakeFiles/knng.dir/src/cluster.cpp.o" \
-"CMakeFiles/knng.dir/src/helpers.cpp.o" \
+"CMakeFiles/knng.dir/src/input-output.cpp.o" \
 "CMakeFiles/knng.dir/src/kmeans.cpp.o" \
 "CMakeFiles/knng.dir/src/knng.cpp.o" \
 "CMakeFiles/knng.dir/src/main.cpp.o" \
@@ -166,7 +166,7 @@ knng_OBJECTS = \
 knng_EXTERNAL_OBJECTS =
 
 knng: CMakeFiles/knng.dir/src/cluster.cpp.o
-knng: CMakeFiles/knng.dir/src/helpers.cpp.o
+knng: CMakeFiles/knng.dir/src/input-output.cpp.o
 knng: CMakeFiles/knng.dir/src/kmeans.cpp.o
 knng: CMakeFiles/knng.dir/src/knng.cpp.o
 knng: CMakeFiles/knng.dir/src/main.cpp.o

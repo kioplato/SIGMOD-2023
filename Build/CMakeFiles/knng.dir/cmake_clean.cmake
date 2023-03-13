@@ -1,8 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/knng.dir/src/cluster.cpp.o"
   "CMakeFiles/knng.dir/src/cluster.cpp.o.d"
-  "CMakeFiles/knng.dir/src/helpers.cpp.o"
-  "CMakeFiles/knng.dir/src/helpers.cpp.o.d"
+  "CMakeFiles/knng.dir/src/input-output.cpp.o"
+  "CMakeFiles/knng.dir/src/input-output.cpp.o.d"
   "CMakeFiles/knng.dir/src/kmeans.cpp.o"
   "CMakeFiles/knng.dir/src/kmeans.cpp.o.d"
   "CMakeFiles/knng.dir/src/knng.cpp.o"

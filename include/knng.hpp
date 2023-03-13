@@ -12,4 +12,4 @@ using namespace std;
  *
  * @param points The points to use for the knng construction.
  */
-vector<vector<uint32_t>> create_knng(const vector<point_t>& points, uint32_t k);
+vector<vector<uint32_t>> create_knng(vector<point_t>& points, uint32_t k);

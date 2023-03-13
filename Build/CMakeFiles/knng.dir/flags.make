@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/home/kioplato/Desktop/SIGMOD-2023/include
 
-CXX_FLAGS = --std=c++17 -O3 -march=native -mtune=native -fopenmp -O3 -DNDEBUG
+CXX_FLAGS = --std=c++17 -O3 -fopenmp -O3 -DNDEBUG -fopenmp
 

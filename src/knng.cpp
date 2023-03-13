@@ -1,3 +1,4 @@
+#include <iostream>
 #include <algorithm>
 #include <queue>
 #include <random>
@@ -8,6 +9,7 @@
 #include "point.hpp"
 #include "cluster.hpp"
 #include "helpers.hpp"
+#include "kmeans.hpp"
 
 using namespace std;
 
@@ -31,11 +33,19 @@ knn_of_point(const point_t& point, uint32_t k)
 	 */
 
 	// The @point's cluster.
-	const vector<point_t>& candidates = point.cluster()->members();
+	//if (point.cluster() == NULL) {
+	//	cout << "fatal internal: found a point with null cluster." << endl;
+	//	point.print(cout, "");
+
+	//	exit(1);
+	//}
+
+	const vector<point_t>& candidates = point.cluster()->points();
 
 	size_t c_cand = 0;
 
 	for (; c_cand < candidates.size(); ++c_cand) {
+		// Skip itself. A point isn't a neighbor of itself.
 		if (candidates[c_cand].id() == point.id())
 			continue;
 
@@ -43,16 +53,21 @@ knn_of_point(const point_t& point, uint32_t k)
 		double distance = euclidean_distance_aprox(point, candidate);
 
 		if (nearest_neighbors.size() < k)
-			nearest_neighbors.push({distance, candidate.id()});
+			nearest_neighbors.push({distance, candidate.id() - 1});
 		else if (nearest_neighbors.top().first > distance) {
 			nearest_neighbors.pop();
-			nearest_neighbors.push({distance, candidate.id()});
+			nearest_neighbors.push({distance, candidate.id() - 1});
 		}
 	}
 
+	//if (nearest_neighbors.size() < 100) {
+	//	cerr << "fatal internal: point without 100 nn." << endl;
+	//	exit(1);
+	//}
+
 	// Write the nns of the current point @id.
 	vector<uint32_t> knn;
-	knn.reserve(100);
+	knn.reserve(k);
 
 	while (!nearest_neighbors.empty()) {
 		knn.push_back(nearest_neighbors.top().second);
@@ -70,14 +85,35 @@ knn_of_point(const point_t& point, uint32_t k)
 	return knn;
 }
 
-vector<vector<uint32_t>> create_knng(const vector<point_t>& points, uint32_t k)
+vector<vector<uint32_t>> create_knng(vector<point_t>& points, uint32_t k)
 {
+	/*
+	 * Run K-Means clustering. Using this method we exhaustively search
+	 * for the k nearest neighbors of a point in the cluster it belongs.
+	 */
+	//cout << "In create_knng: Running K-Means." << endl;
+	kmeans_t kmeans(2, 100, points);
+	kmeans.run();
+	//cout << "In create_knng: Done K-Means." << endl;
+
+	//cout << "In create_knng: Printing the clustering result." << endl;
+	//kmeans.print_clusters(cout, "");
+
+	//cout << "Printing any points with NULL cluster ptr." << endl;
+	//for (const point_t& point : points) {
+	//	if (point.cluster() == NULL)
+	//		point.print(cout, "");
+	//}
+
+	//cout << "Creating the knng." << endl;
 	vector<vector<uint32_t>> knng;
-	knng.reserve(points.size());
+	knng.resize(points.size());
 
 	#pragma omp parallel for
-	for (size_t c_point = 0; c_point < knng.size(); ++c_point)
-		knng.push_back(knn_of_point(points[c_point], k));
+	for (size_t c_point = 0; c_point < points.size(); ++c_point) {
+		//printf("Calculating k-nn of %zu-th point.\n", c_point);
+		knng[c_point] = knn_of_point(points[c_point], k);
+	}
 
 	return knng;
 }

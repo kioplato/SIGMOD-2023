@@ -8,15 +8,9 @@ using namespace std;
 
 class cluster_t;
 
-/* Class storing a 2-dimensional point. */
 class point_t {
 	// The identifier of the point.
-	// A point with _id = 0 means its undefined.
-	uint32_t _id = 0;
-
-	// The id of the cluster the point belongs to.
-	// A cluster with _cluster_id = 0 means its undefined.
-	uint32_t _cluster_id = 0;
+	uint32_t _id;
 
 	// Pointer to the cluster the point belongs.
 	const cluster_t* _cluster;
@@ -25,31 +19,51 @@ class point_t {
 	vector<float> _coordinates;
 
 public:
-	// Initialize the point at the origin of the n_dims-dimensional space.
-	point_t(size_t n_dims);
+	/*
+	 * @brief Initialize the point with an ID and its coordinates.
+	 *
+	 * @param id The id of the point. Should be unique.
+	 * @param coordinates Where the point lives, its location.
+	 */
+	point_t(const uint32_t& id, const vector<float>& coordinates);
 
-	// Initialize the point with its id and exact coordinates.
-	point_t(uint32_t id, const vector<float> coordinates);
-
-	// Get the number of dimensions that point lives in.
-	size_t n_dims() const;
-
-	// Get the ID of the point.
+	/*
+	 * @brief Get the ID of the point.
+	 *
+	 * @return The ID of the point.
+	 */
 	uint32_t id() const;
 
-	// Get the id of the cluster that the point belongs.
-	uint32_t cluster_id() const;
-
-	// Set the cluster id of the point.
-	void cluster_id(uint32_t id);
-
+	/*
+	 * @brief Get a pointer to the point's cluster.
+	 *
+	 * @return None.
+	 */
 	const cluster_t* cluster() const;
+
+	/*
+	 * @brief Set the cluster in which the point belongs.
+	 *
+	 * @param cluster Pointer to the cluster that the point belongs.
+	 *
+	 * @return None.
+	 */
 	void cluster(const cluster_t* cluster);
 
-	// Get the i-th dimension's value.
-	float operator[] (size_t index) const;
-	float& operator[] (size_t index);
+	/*
+	 * @brief Get the coordinates of the point.
+	 *
+	 * @return None.
+	 */
+	const vector<float>& coords() const;
 
-	// Print the point to stdout.
-	void print(ofstream ofs) const;
+	/*
+	 * @brief Print the point to the specified stream.
+	 *
+	 * @param ofs The stream to print the point.
+	 * @param indent The indentation level to print the point.
+	 *
+	 * @return None.
+	 */
+	void print(ostream& outstream, string indent = "") const;
 };

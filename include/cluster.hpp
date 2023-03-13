@@ -14,8 +14,8 @@ class cluster_t {
 	point_t _centroid;
 
 	// The points in this cluster.
-	// TODO: Use a map for guaranteed O(log(n)) or unordered map with
-	// Szudzik's point hash function.
+	// TODO: Use a map for guaranteed O(log(n)) or
+	// unordered map with Szudzik's point hash function.
 	vector<point_t> _points;
 
 public:
@@ -25,30 +25,45 @@ public:
 	// The id of this cluster.
 	uint32_t id() const;
 
-	// Add a point to the cluster.
-	void add_member(const point_t& point);
-
-	// Remove a point from the cluster using its id.
-	bool remove_member(uint32_t point_id);
-
-	// The number of points in this cluster.
-	size_t size() const;
-
-	// Get a specific point by index.
-	const point_t& operator[] (size_t index) const;
-
-	// Get the centroid of the cluster.
+	/*
+	 * Get the centroid of the cluster.
+	 */
 	const point_t& centroid() const;
 
-	// Change centroid to the specified one.
+	/*
+	 * Change centroid to the specified one.
+	 */
 	void centroid(const point_t& centroid);
 
-	// Remove all points from this cluster.
-	void clear_members();
+	/*
+	 * @brief Recalculate the cluster's center and update centroid.
+	 */
+	void recenter();
+
+	/*
+	 * Add a point to the cluster.
+	 */
+	void add_point(const point_t& point);
+
+	/*
+	 * Remove a point from the cluster using its id.
+	 */
+	bool remove_point(uint32_t point_id);
 
 	// Get the cluster's points.
-	const vector<point_t>& members() const;
+	const vector<point_t>& points() const;
 
-	// Recalculate the cluster's center and update centroid.
-	void recenter();
+	/*
+	 * @brief Remove all points from this cluster.
+	 *
+	 * @return None.
+	 */
+	void clear();
+
+	/*
+	 * @brief Print the cluster ID, its centroid and its member points.
+	 *
+	 * @return None.
+	 */
+	void print(ostream& outstream, string indent = "") const;
 };
