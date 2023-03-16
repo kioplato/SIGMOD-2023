@@ -40,5 +40,22 @@ tradeoff over recall vs construction time?
 
 Plot the recall score and runtime for various number of clusters.
 
+# Evaluator: How to evaluate a solution's recall
+
+In evaluator/ directory two programs exist. The groundtruther and evaluator.
+
+## Compute groundtruth
+
+Using the `groundtruther` you can generate the true knng of a dataset.
+You can also generate a true knng sample, which could be useful for faster
+evaluation of the recall score of a aprox knng we would like to evaluate.
+
+## Compute recall
+
+Using the `recaller` you can compute the recall score of an aprox knng.
+You should already have the complete true knng, or a sample of it, to provide
+the recaller with in order to compute the recall score. The bigger the sample
+of the true knng the more accurate will the recall score be of the aprox knng.
+
 [1]: http://sigmod2023contest.eastus.cloudapp.azure.com/leaders_test.shtml
 [2]: https://en.wikibooks.org/wiki/Algorithms/Distance_approximations
