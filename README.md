@@ -40,6 +40,14 @@ tradeoff over recall vs construction time?
 
 Plot the recall score and runtime for various number of clusters.
 
+# Find best hyperparameters
+
+Inside scripts/ directory the script `benchmark-hyperparameters.sh` benchmarks
+all hyperparameters in the specified ranges. It creates all the combinations
+of their values and benchmarks all combinations. The benchmarks are written in
+the specified file as a markdown table. Each benchmark, a row in the table,
+includes the execution time required and its recall score.
+
 # Evaluator: How to evaluate a solution's recall
 
 In evaluator/ directory two programs exist. The groundtruther and evaluator.
