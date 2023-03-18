@@ -45,6 +45,16 @@ knn_of_point(const point_t& point, uint32_t k)
 		}
 	}
 
+#ifdef VERBOSE
+	// Each point must have exactly k neighbors.
+
+	if (nearest_neighbors.size() < k) {
+		printf("Found point with less than 100 nn.\n");
+		point.print(cout, "");
+		point.cluster()->print(cout, "", false);
+		die("fatal internal: point with ", nearest_neighbors.size(), " nn.");
+	}
+#endif
 
 	// Write the nns of the current point @id.
 	vector<uint32_t> knn;
@@ -68,6 +78,9 @@ knn_of_point(const point_t& point, uint32_t k)
 
 knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters, uint32_t n_iters)
 {
+#ifdef VERBOSE
+	cout << "Creating knng." << endl;
+#endif
 	/*
 	 * Run K-Means clustering. Using this method we exhaustively search
 	 * for the k nearest neighbors of a point in the cluster it belongs.
@@ -75,7 +88,17 @@ knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters, uint32_t n
 	kmeans_t kmeans(n_clusters, n_iters, points);
 	kmeans.run();
 
+#ifdef VERBOSE
+	/*
+	 * Print the clusters without their participating points,
+	 * since it would clutter the output way too much.
+	 */
+	kmeans.print_clusters(cout, "", false);
+#endif
 
+#ifdef VERBOSE
+	cout << "Search exhaustively in each point's cluster." << endl;
+#endif
 
 	knng_t knng;
 	knng.resize(points.size());

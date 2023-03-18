@@ -18,6 +18,11 @@ if (OpenMP_CXX_not_FOUND)
 	message("OpenMP is required but not found. Abort.")
 endif()
 
+# Compile project with VERBOSE macro defined for verbose execution.
+if (VERBOSE)
+	add_compile_definitions(VERBOSE)
+endif()
+
 # Find all the source and header files.
 FILE(GLOB SRCS src/*)
 

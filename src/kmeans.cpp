@@ -74,6 +74,10 @@ _find_nearest_cluster(const clusters_t& clusters, const point_t& assortee)
  */
 void kmeans_t::run()
 {
+#ifdef VERBOSE
+	cout << "Performing K-Means clustering." << endl;
+#endif
+
 	// The number of points we need to cluster.
 	size_t n_points = _points.size();
 	// The n-dimensional space the points live.
@@ -121,6 +125,13 @@ void kmeans_t::run()
 		++c_cluster;
 	}
 
+#ifdef VERBOSE
+	cout << "Created " << _clusters.size() << " clusters." << endl;
+	cout << "Initialized clusters with these point IDs:" << endl;
+	for (uint32_t id : used_points)
+		cout << "\t" << id << endl;
+	print_clusters(cout, "", true);
+#endif
 
 	/*
 	 * Start improving the clusters and update each point's cluster.
@@ -131,6 +142,9 @@ void kmeans_t::run()
 
 	for (uint32_t c_iter = 0; c_iter < _n_iters; ++c_iter)
 	{
+#ifdef VERBOSE
+		cout << "K-Means " << c_iter << " iteration." << endl;
+#endif
 
 		// We stop when we can no longer improve any cluster.
 		bool done = true;
