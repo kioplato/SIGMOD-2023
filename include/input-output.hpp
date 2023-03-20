@@ -18,6 +18,8 @@ struct config_t {
 
 	// The number of iterations to perform while clusters keep improving.
 	uint32_t n_iters = 0;
+
+	uint32_t n_nearest_clusters = 0;
 };
 
 /**

@@ -1,7 +1,10 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <queue>
+#include <omp.h>
 #include "kmeans.hpp"
+#include "typedefs.hpp"
 
 using namespace std;
 
@@ -12,54 +15,109 @@ using namespace std;
  * @param n_clusters The number of clusters to create.
  * @param n_iters The maximum number of iterations to perform.
  */
-kmeans_t::kmeans_t(uint32_t n_clusters, uint32_t n_iters, points_t& points)
-: _n_clusters(n_clusters), _n_iters(n_iters), _points(points)
+kmeans_t::kmeans_t(uint32_t n_clusters, uint32_t n_iters, points_t& points, uint32_t n_nearest_clusters)
+: _n_clusters(n_clusters), _n_iters(n_iters), _points(points), _n_nearest_clusters(n_nearest_clusters)
 {
 	// Empty.
 }
 
 /*
- * @brief Find the nearest cluster of @assortee.
+ * @brief Find the m nearest clusters to @assortee.
  *
- * @param clusters The cluster to search.
- * @param assortee The point to find its nearest cluster from @_clusters.
+ * @param clusters The clusters to filter the m closest to @assortee.
+ * @param assortee The point to find its m nearest clusters from @clusters.
+ * @param m The number of nearest clusters to search into.
  *
- * @return The memory address of the @assortee's nearest cluster.
+ * @return The memory address of the @assortee's m nearest clusters,
+ * sorted from the furthest to the nearest cluster.
  */
-static inline const cluster_t*
-_find_nearest_cluster(const clusters_t& clusters, const point_t& assortee)
+static inline const cluster_ptrs_t
+_find_m_nearest_clusters(clusters_t& clusters, const point_t& assortee,
+		const uint32_t& n_nearest_clusters)
 {
-	// Initialize the best cluster.
-	double best_distance = euclidean_distance_aprox(clusters[0].centroid(), assortee);
-	const cluster_t* best_cluster = &clusters[0];
+	// Store the m nearest clusters here.
+	cluster_ptrs_t nearest_clusters;
+
+	// The next closest cluster. Used for merging the max heaps of the threads.
+	pair<double, cluster_t*> next_closest;
+
+	/*
+	 * If we use more threads than m then some threads' local m will be zero
+	 * and this means that these threads won't search in the @clusters for 0
+	 * nearest clusters, effectively skipping the @clusters that each such
+	 * thread is responsible for.
+	 */
+	uint32_t n_threads = min(omp_get_num_procs(), (int)n_nearest_clusters);
 
 	// Iterate over the rest clusters and find the nearest one.
-	#pragma omp parallel
+	#pragma omp parallel num_threads(n_threads)
 	{
-		double best_distance_thr = best_distance;
-		const cluster_t* best_cluster_thr = best_cluster;
+		// The nearest clusters this thread will find.
+		priority_queue<pair<double, cluster_t*>> nearest_clusters_thr;
 
 		#pragma omp for nowait
-		for (const cluster_t& cluster : clusters)
+		for (cluster_t& cluster : clusters)
 		{
 			double distance = euclidean_distance_aprox(cluster.centroid(), assortee);
 
-			if (distance < best_distance_thr)
-			{
-				best_distance_thr = distance;
-				best_cluster_thr = &cluster;
+			if (nearest_clusters_thr.size() < n_nearest_clusters)
+				nearest_clusters_thr.push({distance, &cluster});
+			else if (nearest_clusters_thr.top().first > distance) {
+				nearest_clusters_thr.pop();
+				nearest_clusters_thr.push({distance, &cluster});
 			}
 		}
 
-		#pragma omp critical
-		if (best_distance_thr < best_distance)
-		{
-			best_distance = best_distance_thr;
-			best_cluster = best_cluster_thr;
+		/*
+		 * We now need a smart way to fill the @nearest_clusters vector
+		 * with the m nearest neighbors. The final sorted order will be
+		 * from furthest to nearest cluster because we use max heaps.
+		 *
+		 * To perform the merge of @n_threads we pick the m nearest
+		 * clusters from the @n_threads * m nearest cluster candidates.
+		 */
+
+		/*
+		 * First thread here will initialize the @next_closest.
+		 * An implicit barrier follows for synchronization.
+		 *
+		 * The @next_closest is a shared variable for storing each
+		 * iteration's nearest cluster. In total we perform m iters.
+		 */
+		#pragma omp single
+		next_closest = nearest_clusters_thr.top();
+
+		while (nearest_clusters.size() != n_nearest_clusters) {
+			pair top = nearest_clusters_thr.top();
+
+			#pragma omp critical
+			if (next_closest.first > top.first)
+				next_closest = top;
+
+			// All the threads must update @next_closest.
+			#pragma omp barrier
+
+			/*
+			 * The thread that had the next closest cluster will
+			 * place it into @nearest_clusters and consume it in
+			 * the process from @nearest_clusters_thr.
+			 */
+			if (next_closest.second == top.second) {
+				nearest_clusters.push_back(next_closest.second);
+				nearest_clusters_thr.pop();
+			}
+
+			/*
+			 * All threads must complete this iter synchronized.
+			 * In the next iteration @nearest_clusters.size() will
+			 * be compared and a race condition could occur given
+			 * that just above we update @nearest_clusters.
+			 */
+			#pragma omp barrier
 		}
 	}
 
-	return best_cluster;
+	return nearest_clusters;
 }
 
 /*
@@ -117,7 +175,7 @@ void kmeans_t::run()
 		// Add point to cluster.
 		_clusters.back().add_point(&_points[index]);
 		// Add cluster to point.
-		_points[index].cluster(&_clusters.back());
+		_points[index].clusters({&_clusters.back()});
 
 		// Don't use the same point .
 		used_points.push_back(index + 1);
@@ -133,14 +191,41 @@ void kmeans_t::run()
 	print_clusters(cout, "", true);
 #endif
 
+#ifdef VERBOSE
+		cout << "K-Means 1 iteration." << endl;
+#endif
 	/*
-	 * Start improving the clusters and update each point's cluster.
+	 * Initialize each point's nearest clusters. This initialization saves
+	 * us from checking if the point has been initialized inside the loop.
+	 * In essense we perform one K-Means iteration. This means we need to
+	 * start from the 2nd iteration in the improvement loop below.
+	 */
+	#pragma omp parallel
+	{
+		// Find each point's n nearest clusters.
+		#pragma omp for
+		for (point_t& point : _points)
+			point.clusters(_find_m_nearest_clusters(_clusters, point, _n_nearest_clusters));
+
+		// Add each point to the cluster it belongs.
+		#pragma omp for
+		for (const point_t& point : _points)
+			point.clusters().back()->add_point(&point);
+
+		// Recenter clusters because they contain new points.
+		#pragma omp for
+		for (auto& cluster : _clusters)
+			cluster.recenter();
+	}
+
+	/*
+	 * Start improving the clusters and update each point's clusters.
 	 *
 	 * We either stop if we can no longer improve the clusters,
 	 * or if maximum iterations @_n_iters have been performed.
 	 */
 
-	for (uint32_t c_iter = 0; c_iter < _n_iters; ++c_iter)
+	for (uint32_t c_iter = 1; c_iter < _n_iters; ++c_iter)
 	{
 #ifdef VERBOSE
 		cout << "K-Means " << c_iter << " iteration." << endl;
@@ -151,24 +236,22 @@ void kmeans_t::run()
 
 		// Add all points to their nearest cluster.
 		#pragma omp parallel for reduction(&&: done)
-		for (point_t& point : _points)
-		{
-			uint32_t curr_cluster_id = (point.cluster()) ? point.cluster()->id() : 0;
-			const cluster_t* best_cluster = _find_nearest_cluster(_clusters, point);
+		for (point_t& point : _points) {
+			cluster_ptrs_t curr_clusters = point.clusters();
+			cluster_ptrs_t best_clusters = _find_m_nearest_clusters(_clusters, point, _n_nearest_clusters);
 
-			// Update the point's cluster if the current one isn't the best.
-			if (curr_cluster_id == best_cluster->id())
-				continue;
+			// Update the point's clusters, in case nearest changed.
+			point.clusters(best_clusters);
 
-			point.cluster(best_cluster);
+			// Update the point's nearest cluster if the current one isn't the best.
+			if (curr_clusters[0]->id() != best_clusters[0]->id())
+				// At least one cluster has been improved.
+				done = false;
 
 			// TODO: Remove point from @curr_cluster_id and add it
 			// to @best_cluster_id. A race could occur where two
 			// points need to be removed from the same cluster or
 			// added to the same cluster.
-
-			// At least one cluster has been improved.
-			done = false;
 		}
 
 		// If no cluster was improved then we are done.
@@ -189,8 +272,7 @@ void kmeans_t::run()
 			// Add each point to the cluster it belongs.
 			#pragma omp for
 			for (const point_t& point : _points)
-				// Cluster's index is its id - 1.
-				_clusters[point.cluster()->id() - 1].add_point(&point);
+				point.clusters().front()->add_point(&point);
 
 			// Recenter clusters because they contain new points.
 			#pragma omp for

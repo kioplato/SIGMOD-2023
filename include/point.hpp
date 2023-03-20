@@ -12,7 +12,7 @@ class point_t {
 	uint32_t _id;
 
 	// Pointer to the cluster the point belongs.
-	const cluster_t* _cluster;
+	cluster_ptrs_t _clusters;
 
 	// The coordinates of the point in the n-dimensions.
 	vector<float> _coordinates;
@@ -38,7 +38,7 @@ public:
 	 *
 	 * @return None.
 	 */
-	const cluster_t* cluster() const;
+	const cluster_ptrs_t& clusters() const;
 
 	/*
 	 * @brief Set the cluster in which the point belongs.
@@ -47,7 +47,7 @@ public:
 	 *
 	 * @return None.
 	 */
-	void cluster(const cluster_t* cluster);
+	void clusters(const cluster_ptrs_t& clusters);
 
 	/*
 	 * @brief Get the coordinates of the point.

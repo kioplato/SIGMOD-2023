@@ -60,7 +60,8 @@ int main(int argc, char **argv)
 #endif
 
 	// Construct the knng.
-	knng_t knng = create_knng(points, k, config.n_clusters, config.n_iters);
+	knng_t knng = create_knng(points, k, config.n_clusters,
+			config.n_iters, config.n_nearest_clusters);
 
 #ifdef VERBOSE
 	cout << "Writing the knng to " << config.output << " file." << endl;

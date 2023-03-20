@@ -13,22 +13,22 @@
 
 using namespace std;
 
-/*
- * @brief Find the k nearest neighbors of the @point from the cluster it belongs.
+/**
+ * @brief Improve the k nearest neighbors of a point.
+ * They are stored in a priority queue. We need to maintain k total items in
+ * the queue as this reduces complexity from O(log(n)) to O(log(k)).
  *
- * @param point The point to find its k nearest neighbors.
- * @param k How many nearest neighbors to find.
+ * @param point The point whose nearest neighbors we are improving.
+ * @param k The number of nearest neighbors to maintain.
+ * @param candidates The next batch of candidates from the next cluster.
+ * @param nearest_neighbors The k nearest neighbors from furthest to nearest.
  *
- * @return Vector with k points, which are the knn of @point in its cluster.
+ * @return None. We improve @nearest_neighbors in place.
  */
-static inline vector<uint32_t>
-knn_of_point(const point_t& point, uint32_t k)
+static inline void
+improve_knn_of_point(const point_t& point, uint32_t k, const point_cptrs_t& candidates,
+		priority_queue<pair<double, uint32_t>>& nearest_neighbors)
 {
-	// Max heap. This way we know which is the furthest point from @id.
-	priority_queue<pair<double, uint32_t>> nearest_neighbors;
-
-	const point_cptrs_t& candidates = point.cluster()->points();
-
 	for (size_t c_cand = 0; c_cand < candidates.size(); ++c_cand) {
 		// Skip itself. A point isn't a neighbor of itself.
 		if (candidates[c_cand]->id() == point.id())
@@ -43,6 +43,28 @@ knn_of_point(const point_t& point, uint32_t k)
 			nearest_neighbors.pop();
 			nearest_neighbors.push({distance, candidate.id() - 1});
 		}
+	}
+}
+
+/*
+ * @brief Find the k nearest neighbors of the @point from the cluster it belongs.
+ *
+ * @param point The point to find its k nearest neighbors.
+ * @param k How many nearest neighbors to find.
+ *
+ * @return Vector with k points, which are the knn of @point in its cluster.
+ */
+static inline vector<uint32_t>
+knn_of_point(const point_t& point, uint32_t k)
+{
+	// Max heap. This way we know which is the furthest point from @id.
+	priority_queue<pair<double, uint32_t>> nearest_neighbors;
+
+	// Iterate from the nearest cluster towards the furthest.
+	for (const cluster_t* cluster : point.clusters()) {
+		const point_cptrs_t& candidates = cluster->points();
+
+		improve_knn_of_point(point, k, candidates, nearest_neighbors);
 	}
 
 #ifdef VERBOSE
@@ -76,16 +98,19 @@ knn_of_point(const point_t& point, uint32_t k)
 	return knn;
 }
 
-knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters, uint32_t n_iters)
+knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters,
+		uint32_t n_iters, uint32_t n_nearest_clusters)
 {
 #ifdef VERBOSE
 	cout << "Creating knng." << endl;
 #endif
+
 	/*
-	 * Run K-Means clustering. Using this method we exhaustively search
-	 * for the k nearest neighbors of a point in the cluster it belongs.
+	 * Run K-Means clustering. We create @n_clusters. Each point belongs in
+	 * one cluster, however, we also store each points @n_nearest_clusters.
+	 * This way we can search in more clusters for the k-nn of a point.
 	 */
-	kmeans_t kmeans(n_clusters, n_iters, points);
+	kmeans_t kmeans(n_clusters, n_iters, points, n_nearest_clusters);
 	kmeans.run();
 
 #ifdef VERBOSE

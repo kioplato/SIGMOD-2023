@@ -7,7 +7,7 @@
 using namespace std;
 
 point_t::point_t(const uint32_t& id, const vector<float>& coordinates)
-: _id(id), _cluster(NULL), _coordinates(coordinates)
+: _id(id), _coordinates(coordinates)
 {
 	/* Empty. */
 }
@@ -17,14 +17,14 @@ uint32_t point_t::id() const
 	return _id;
 }
 
-const cluster_t* point_t::cluster() const
+const cluster_ptrs_t& point_t::clusters() const
 {
-	return _cluster;
+	return _clusters;
 }
 
-void point_t::cluster(const cluster_t* cluster)
+void point_t::clusters(const cluster_ptrs_t& clusters)
 {
-	_cluster = cluster;
+	_clusters = clusters;
 }
 
 const vector<float>& point_t::coords() const
@@ -39,9 +39,15 @@ void point_t::print(ostream& outstream, string indent) const
 	outstream << indent << "Point:" << endl;
 	outstream << indent << "\tID = " << _id << endl;
 	outstream << indent << "\tAddress = " << this << endl;
-	outstream << indent << "\tCluster address = " << _cluster << endl;
-	if (_cluster)
-		outstream << indent << "\tCluster ID through ptr = " << _cluster->id() << endl;
+
+	outstream << indent << "\tNearest Clusters addresses:" << endl;
+	outstream << indent+"\t\t";
+	for (const cluster_t* cluster : _clusters)
+		outstream << "Address=" << cluster << ",ID=" << cluster->id() << " ";
+	if (_clusters.empty())
+		outstream << "No nearest clusters set.";
+	outstream << endl;
+
 	outstream << indent << "\tCoordinates:" << endl;
 	for (uint32_t c_dim = 0; c_dim < n_dims; ++c_dim) {
 		if (c_dim % 10 == 0)

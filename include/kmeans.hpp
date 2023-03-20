@@ -21,6 +21,9 @@ class kmeans_t {
 	// The clusters.
 	clusters_t _clusters;
 
+	// The number of nearest clusters each point will belong.
+	uint32_t _n_nearest_clusters;
+
 public:
 	/**
 	 * @brief Initialize the K-Means algorithm with how many clusters to
@@ -30,7 +33,7 @@ public:
 	 * @param n_iters The max number of iterations to perform.
 	 * @param points The points to cluster.
 	 */
-	kmeans_t(uint32_t n_clusters, uint32_t n_iters, points_t& points);
+	kmeans_t(uint32_t n_clusters, uint32_t n_iters, points_t& points, uint32_t n_nearest_clusters);
 
 	/**
 	 * @brief Perform K-Means clustering. Create @_n_clusters clusters

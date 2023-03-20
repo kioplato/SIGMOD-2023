@@ -20,4 +20,5 @@ using namespace std;
  * of each point's nearest neighbors. The index of each point correspond
  * to the order in which they were read from the dataset file.
  */
-knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters, uint32_t n_iters);
+knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters,
+		uint32_t n_iters, uint32_t n_nearest_clusters);

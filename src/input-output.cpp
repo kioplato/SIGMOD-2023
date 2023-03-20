@@ -50,6 +50,19 @@ valid_n_iters_or_die(uint32_t& config_n_iters, string n_iters)
 }
 
 static inline void
+valid_n_nearest_clusters_or_die(uint32_t& config_n_nearest_clusters, string n_nearest_clusters)
+{
+	if (config_n_nearest_clusters != 0)
+		die("--n-nearest-clusters <unsigned> already provided.");
+
+	// Check that the provided @n_nearest_clusters is positive.
+	if (!regex_match(n_nearest_clusters, regex("[1-9]+[0-9]*")))
+		die("--n-nearest-clusters ", n_nearest_clusters, " is not a positive number.");
+
+	config_n_nearest_clusters = atoll(n_nearest_clusters.c_str());
+}
+
+static inline void
 valid_output_or_die(string& config_output, string output)
 {
 	if (!config_output.empty())
@@ -91,6 +104,8 @@ config_t parse_argv(uint32_t argc, char **argv)
 			valid_n_clusters_or_die(config.n_clusters, val);
 		else if (key == "--n-iters")
 			valid_n_iters_or_die(config.n_iters, val);
+		else if (key == "--n-nearest-clusters")
+			valid_n_nearest_clusters_or_die(config.n_nearest_clusters, val);
 		else if (key == "--output")
 			valid_output_or_die(config.output, val);
 		else
@@ -106,6 +121,8 @@ config_t parse_argv(uint32_t argc, char **argv)
 		die("fatal: --n-clusters <unsigned> not specified.");
 	if (config.n_iters == 0)
 		die("fatal: --n-iters <unsigned> not specified.");
+	if (config.n_nearest_clusters == 0)
+		die("--n-nearest-clusters <unsigned> not specified.");
 
 	return config;
 }
@@ -116,6 +133,7 @@ void print_config(const config_t& config)
 	cout << "\tDataset = " << config.dataset << endl;
 	cout << "\tClusters = " << config.n_clusters << endl;
 	cout << "\tIterations = " << config.n_iters << endl;
+	cout << "\t# Nearest clusters = " << config.n_nearest_clusters << endl;
 }
 
 points_t read_dataset(const string& path, const uint32_t& n_dims)
