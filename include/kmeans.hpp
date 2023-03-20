@@ -52,7 +52,8 @@ public:
 	 *
 	 * @return None.
 	 */
-	void print_clusters(ostream& outstream, string indent, bool print_points) const;
+	void print_clusters(ostream& outstream, string indent, bool print_points,
+			bool print_coords) const;
 
 	/**
 	 * @brief Print the @_points to the specified stream @outstream.
@@ -63,5 +64,5 @@ public:
 	 *
 	 * @return None.
 	 */
-	void print_points(ostream& outstream, string indent) const;
+	void print_points(ostream& outstream, string indent, bool print_coords) const;
 };

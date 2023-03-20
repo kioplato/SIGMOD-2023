@@ -32,7 +32,7 @@ const vector<float>& point_t::coords() const
 	return _coordinates;
 }
 
-void point_t::print(ostream& outstream, string indent) const
+void point_t::print(ostream& outstream, string indent, bool print_coords) const
 {
 	uint32_t n_dims = _coordinates.size();
 
@@ -41,22 +41,22 @@ void point_t::print(ostream& outstream, string indent) const
 	outstream << indent << "\tAddress = " << this << endl;
 
 	outstream << indent << "\tNearest Clusters addresses:" << endl;
-	outstream << indent+"\t\t";
 	for (const cluster_t* cluster : _clusters)
-		outstream << "Address=" << cluster << ",ID=" << cluster->id() << " ";
+		outstream << indent << "\t\tAddress=" << cluster << ",ID=" << cluster->id() << endl;
 	if (_clusters.empty())
-		outstream << "No nearest clusters set.";
-	outstream << endl;
+		outstream << indent << "\t\tNo nearest clusters set." << endl;;
 
-	outstream << indent << "\tCoordinates:" << endl;
-	for (uint32_t c_dim = 0; c_dim < n_dims; ++c_dim) {
-		if (c_dim % 10 == 0)
-			outstream << indent + "\t\t";
+	if (print_coords) {
+		outstream << indent << "\tCoordinates:" << endl;
+		for (uint32_t c_dim = 0; c_dim < n_dims; ++c_dim) {
+			if (c_dim % 10 == 0)
+				outstream << indent + "\t\t";
 
-		outstream << _coordinates.at(c_dim) << ' ';
+			outstream << _coordinates.at(c_dim) << ' ';
 
-		if (c_dim % 10 == 9)
-			outstream << endl;
+			if (c_dim % 10 == 9)
+				outstream << endl;
+		}
 	}
 
 	outstream << endl;

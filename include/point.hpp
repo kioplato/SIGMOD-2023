@@ -64,5 +64,5 @@ public:
 	 *
 	 * @return None.
 	 */
-	void print(ostream& outstream, string indent) const;
+	void print(ostream& outstream, string indent, bool print_coords) const;
 };

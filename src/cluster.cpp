@@ -75,17 +75,18 @@ void cluster_t::clear()
 	_points.clear();
 }
 
-void cluster_t::print(ostream& outstream, string indent, bool print_points) const
+void cluster_t::print(ostream& outstream, string indent, bool print_points,
+		bool print_coords) const
 {
 	outstream << indent << "Cluster:" << endl;
 	outstream << indent << "\tID = " << _cluster_id << endl;
 	outstream << indent << "\tAddress = " << this << endl;
 	outstream << indent << "\t# points = " << _points.size() << endl;
 	outstream << indent << "\tCentroid:" << endl;
-	_centroid.print(outstream, indent + "\t\t");
+	_centroid.print(outstream, indent + "\t\t", print_coords);
 	if (print_points) {
 		outstream << indent << "\tPoints:" << endl;
 		for (const point_t* point : _points)
-			point->print(outstream, indent + "\t\t");
+			point->print(outstream, indent + "\t\t", print_coords);
 	}
 }

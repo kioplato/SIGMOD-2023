@@ -188,7 +188,7 @@ void kmeans_t::run()
 	cout << "Initialized clusters with these point IDs:" << endl;
 	for (uint32_t id : used_points)
 		cout << "\t" << id << endl;
-	print_clusters(cout, "", true);
+	print_clusters(cout, "", true, false);
 #endif
 
 #ifdef VERBOSE
@@ -282,14 +282,14 @@ void kmeans_t::run()
 	}
 }
 
-void kmeans_t::print_clusters(ostream& outstream, string indent, bool print_points) const
+void kmeans_t::print_clusters(ostream& outstream, string indent, bool print_points, bool print_coords) const
 {
 	for (const cluster_t& cluster : _clusters)
-		cluster.print(outstream, indent, print_points);
+		cluster.print(outstream, indent, print_points, print_coords);
 }
 
-void kmeans_t::print_points(ostream& outstream, string indent) const
+void kmeans_t::print_points(ostream& outstream, string indent, bool print_coords) const
 {
 	for (const point_t& point : _points)
-		point.print(outstream, indent);
+		point.print(outstream, indent, print_coords);
 }

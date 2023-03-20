@@ -72,8 +72,8 @@ knn_of_point(const point_t& point, uint32_t k)
 
 	if (nearest_neighbors.size() < k) {
 		printf("Found point with less than 100 nn.\n");
-		point.print(cout, "");
-		point.cluster()->print(cout, "", false);
+		point.print(cout, "", false);
+		point.clusters()[0]->print(cout, "", false, false);
 		die("fatal internal: point with ", nearest_neighbors.size(), " nn.");
 	}
 #endif
@@ -118,7 +118,7 @@ knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters,
 	 * Print the clusters without their participating points,
 	 * since it would clutter the output way too much.
 	 */
-	kmeans.print_clusters(cout, "", false);
+	kmeans.print_clusters(cout, "", false, false);
 #endif
 
 #ifdef VERBOSE

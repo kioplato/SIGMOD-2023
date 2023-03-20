@@ -66,5 +66,6 @@ public:
 	 *
 	 * @return None.
 	 */
-	void print(ostream& outstream, string indent, bool print_points) const;
+	void print(ostream& outstream, string indent, bool print_points,
+			bool print_coords) const;
 };
