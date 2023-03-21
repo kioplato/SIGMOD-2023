@@ -3,11 +3,12 @@
 #include <vector>
 #include "point.hpp"
 #include "cluster.hpp"
+#include "helpers.hpp"
 
 using namespace std;
 
 point_t::point_t(const uint32_t& id, const vector<float>& coordinates)
-: _id(id), _coordinates(coordinates)
+: _id(id), _cluster(NULL), _coordinates(coordinates)
 {
 	/* Empty. */
 }
@@ -15,6 +16,16 @@ point_t::point_t(const uint32_t& id, const vector<float>& coordinates)
 uint32_t point_t::id() const
 {
 	return _id;
+}
+
+void point_t::cluster(cluster_t* cluster)
+{
+	_cluster = cluster;
+}
+
+cluster_t* point_t::cluster()
+{
+	return _cluster;
 }
 
 const cluster_ptrs_t& point_t::clusters() const
@@ -42,7 +53,7 @@ void point_t::print(ostream& outstream, string indent, bool print_coords) const
 
 	outstream << indent << "\tNearest Clusters addresses:" << endl;
 	for (const cluster_t* cluster : _clusters)
-		outstream << indent << "\t\tAddress=" << cluster << ",ID=" << cluster->id() << endl;
+		outstream << indent << "\t\tAddress=" << cluster << ", ID=" << cluster->id() << ", dist=" << euclidean_distance_aprox(cluster->centroid(), *this) << endl;
 	if (_clusters.empty())
 		outstream << indent << "\t\tNo nearest clusters set." << endl;;
 

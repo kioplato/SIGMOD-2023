@@ -60,9 +60,12 @@ knn_of_point(const point_t& point, uint32_t k)
 	// Max heap. This way we know which is the furthest point from @id.
 	priority_queue<pair<double, uint32_t>> nearest_neighbors;
 
-	// Iterate from the nearest cluster towards the furthest.
-	for (const cluster_t* cluster : point.clusters()) {
-		const point_cptrs_t& candidates = cluster->points();
+	// The @n_nearest_clusters nearest clusters to the point.
+	const cluster_ptrs_t clusters = point.clusters();
+
+	// Iterate from the nearest cluster from nearest to furthest.
+	for (auto iter = clusters.rbegin(); iter != clusters.rend(); ++iter) {
+		const point_cptrs_t& candidates = (*iter)->points();
 
 		improve_knn_of_point(point, k, candidates, nearest_neighbors);
 	}
@@ -118,7 +121,7 @@ knng_t create_knng(points_t& points, uint32_t k, uint32_t n_clusters,
 	 * Print the clusters without their participating points,
 	 * since it would clutter the output way too much.
 	 */
-	kmeans.print_clusters(cout, "", false, false);
+	kmeans.print_clusters(cout, "", true, false);
 #endif
 
 #ifdef VERBOSE

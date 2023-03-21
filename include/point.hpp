@@ -12,6 +12,9 @@ class point_t {
 	uint32_t _id;
 
 	// Pointer to the cluster the point belongs.
+	cluster_t* _cluster;
+
+	// Pointers to the point's nearest clusters.
 	cluster_ptrs_t _clusters;
 
 	// The coordinates of the point in the n-dimensions.
@@ -32,6 +35,22 @@ public:
 	 * @return The ID of the point.
 	 */
 	uint32_t id() const;
+
+	/**
+	 * @brief Set the point's nearest cluster.
+	 *
+	 * @param cluster Pointer to the cluster to set as nearest cluster.
+	 *
+	 * @return None.
+	 */
+	void cluster(cluster_t* cluster);
+
+	/**
+	 * @brief Get this point's nearest cluster.
+	 *
+	 * @return The address of this point's nearest cluster.
+	 */
+	cluster_t* cluster();
 
 	/*
 	 * @brief Get a pointer to the point's cluster.
