@@ -6,13 +6,18 @@ Team name: jfpk
 
 # Solution
 
-Cluster points and then exhaustively search each point's cluster for its 100
-nearest neighbors.
+Perform clustering and then exhaustively search in the nearest clusters.
 
 # Runtimes
 
-Local machine is i7-1185G7 CPU (4 cores, 8 threads), 16GB RAM.\
-Eval machine is Azure Standard F32s_v2 (32 cores, ? threads), 64GB RAM.
+The benchmarks are performed on the local machine.\
+Local machine is AMD EPYC 16 vcpu cores and 32GB RAM.
+
+The evaluation is performed on the eval machine.\
+Eval machine is Azure Standard F32s_v2 (32 cores, 32 threads), 64GB RAM.
+
+The local machine is x2 slower than eval machine.\
+Baseline solution for 1m dataset requires 20min on eval and 37min on local.
 
 | Dataset | # Clusters | Recall | Runtime local | Runtime eval |
 |---------|------------|--------|---------------|--------------|
@@ -32,15 +37,6 @@ Eval machine is Azure Standard F32s_v2 (32 cores, ? threads), 64GB RAM.
 | 10k     | 14         | ?      | 0.420 secs    | NaN          |
 | 10m     | 8          | NaN    | ?             | TLE          |
 | 10m     | 32         | NaN    | ?             | TLE          |
-
-# Ideas
-Baseline uses euclidean distance comparison only version. This version does
-not include a square root over the result. More [here][2].
-
-Approximate clustering exists. Can we implement it? Does it offer better
-tradeoff over recall vs construction time?
-
-Plot the recall score and runtime for various number of clusters.
 
 # Find best hyperparameters
 
