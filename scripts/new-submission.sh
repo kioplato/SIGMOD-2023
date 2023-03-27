@@ -3,19 +3,17 @@
 # Purpose: create a new ReproZip submission using the specified hyperpameters.
 # The output is a ready-to-submit submission.rpz file. Just submit it upstream.
 
-# The name of the script.
-SCRIPT_BASENAME=$(basename "$0")
+# The absolute path to this script.
+_SCRIPT_ABSOLUTE_PATH=$(readlink -f "$0")
+# This script's directory (this script lives in the scripts/ directory).
+_SCRIPT_DIRECTORY=$(dirname "$_SCRIPT_ABSOLUTE_PATH")
+# Project's root directory.
+_ROOT_DIR=$(readlink -f "$_SCRIPT_DIRECTORY/..")
 
-function die()
-{
-	# String to print to stdout.
-	str=$1
+source "$_ROOT_DIR/scripts/die.sh"
 
-	echo "[$SCRIPT_BASENAME] fatal: $str"
-	echo "run $SCRIPT_BASENAME --help for usage."
-
-	exit 1
-}
+unset _SCRIPT_ABSOLUTE_PATH
+unset _SCRIPT_DIRECTORY
 
 function usage()
 {
@@ -26,7 +24,7 @@ function usage()
 	echo " --dataset <path>: Specify the dataset to use for the submission."
 	echo " --n-clusters <unsigned>: The number of clusters to use."
 	echo " --n-iters <unsigned>: The maximum number of iterations."
-	echo " --search-depth <unsigned>: How many nearest clusters to search into."
+	echo " --n-nearest-clusters <unsigned>: How many nearest clusters to search into."
 }
 
 arguments=("$@")
@@ -52,15 +50,19 @@ do
 			# The number of iterations to perform.
 			NUM_ITERS=${arguments[$i]}
 			;;
-		"--search-depth")
+		"--n-nearest-clusters")
 			((++i))
 			# The number of nearest clusters to search into.
-			SEARCH_DEPTH=${arguments[$i]}
+			NUM_NEAREST_CLUSTERS=${arguments[$i]}
 			;;
 		*)
 			die "flag ${arguments[$i]} not recognized."
 	esac
 done
+
+unset arguments
+
+DATASET_PATH=$(readlink -f "$DATASET_PATH")
 
 # Dataset path must be set.
 if [ -z "$DATASET_PATH" ]
@@ -99,53 +101,39 @@ then
 fi
 
 # The number of nearest clusters to search into must be set.
-if [ -z "$SEARCH_DEPTH" ]
+if [ -z "$NUM_NEAREST_CLUSTERS" ]
 then
-	die "--search-depth <unsigned> not provided."
+	die "--n-nearest-clusters <unsigned> not provided."
 # The number of nearest clusters to search into must be a positive number.
-elif ! [[ $NUM_ITERS =~ [1-9]+[0-9]* ]]
+elif ! [[ $NUM_NEAREST_CLUSTERS =~ [1-9]+[0-9]* ]]
 then
-	die "--search-depth <unsigned> is not a positive number."
+	die "--n-nearest-clusters <unsigned> is not a positive number."
 fi
 
-# The absolute path to this script.
-SCRIPT_ABSOLUTE_PATH=$(readline -f "$0")
-# This script's directory (this script lives in the scripts/ directory).
-SCRIPT_DIRECTORY=$(dirname "$SCRIPT_ABSOLUTE_PATH")
-# Project's root directory.
-ROOT_DIR=$(readlink -f "$SCRIPT_DIRECTORY/..")
-
 # Where to build the project.
-BUILD_DIR="/tmp/SIGMOD-SUBMISSION-Build"
-
+_BUILD_DIR=$(mktemp -d "/tmp/SIGMOD-SUBMISSION-Build.XXXXXXXXXX")
 # The number of threads to use for compilation.
-N_PROCS=$(nproc)
+_N_PROCS=$(nproc)
 
-# Compile the project in subshell.
+# Compile and run the project.
 (
 	# Go into the project's root directory.
-	cd "$ROOT_DIR" || diei "could not cd $ROOT_DIR"
+	cd "$_ROOT_DIR" || diei "could not cd $_ROOT_DIR"
 	# Generate the makefile.
-	cmake -B"$BUILD_DIR" > /dev/null 2>&1 || diei "failed to cmake -BBuild"
+	cmake -B"$_BUILD_DIR" > /dev/null 2>&1 || diei "failed to cmake -BBuild"
+
 	# cd into Build/ directory.
-	cd "$BUILD_DIR" || diei "could not cd $BUILD_DIR"
+	cd "$_BUILD_DIR" || diei "could not cd $_BUILD_DIR"
 	# Compile the project.
-	make -j"$N_PROCS" > /dev/null 2>&1 || diei "could not make -j8"
+	make -j"$_N_PROCS" > /dev/null 2>&1 || diei "could not make -j8"
+
+	# Find the executable's name from CMakeLists.txt file.
+	EXE_BASENAME=$(grep -o "project([a-zA-Z0-9+]*)" "$_ROOT_DIR/CMakeLists.txt" | grep -oP "project\(\K.*?(?=\))")
+	# The executable's path.
+	EXE_PATH="$_BUILD_DIR/$EXE_BASENAME"
+
+	$EXE_PATH --dataset "$DATASET_PATH" --n-clusters "$NUM_CLUSTERS" --n-iters "$NUM_ITERS" --n-nearest-clusters "$NUM_NEAREST_CLUSTERS" --output output.bin
 )
 
-# Find the executable's name from CMakeLists.txt file.
-EXE_BASENAME=$(grep -o "project([a-zA-Z0-9+]*)" "$ROOT_DIR/CMakeLists.txt" | grep -oP "project\(\K.*?(?=\))")
-# The executable's path.
-EXE_PATH="$BUILD_DIR/$EXE_BASENAME"
-
-# Where to store the reprozip trace files.
-TRACE_DIR="$BUILD_DIR/.reprozip-trace"
-
-# Trace the execution.
-reprozip -d "$TRACE_DIR" trace "$EXE_PATH --dataset $DATASET_PATH\
-	--n-clusters $NUM_CLUSTERS --n-iters $NUM_ITERS --search-depth $SEARCH_DEPTH"
-# Pack the traced execution.
-reprozip -d "$TRACE_DIR" pack "submission-${NUM_CLUSTERS}clusters-${NUM_ITERS}iters-${SEARCH_DEPTH}depth.rpz"
-
-# Clean the /tmp/ directory.
-rm -rf "$BUILD_DIR"
+# Clean the /tmp directory.
+rm -rf "$_BUILD_DIR"
