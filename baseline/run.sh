@@ -2,4 +2,4 @@
 
 make clean
 make
-./baseline ../datasets/dummy-data.bin
+./baseline dummy-data.bin
