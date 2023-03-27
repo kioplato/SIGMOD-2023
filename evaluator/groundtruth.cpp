@@ -83,6 +83,7 @@ sample_true_knng(const vector<vector<float>>& points,
 	// Here we will store the sampled true knng.
 	vector<vector<uint32_t>> sampled_true_knng(true_indices.size());
 
+	#pragma omp parallel for
 	for (size_t c_index = 0; c_index < true_indices.size(); ++c_index) {
 		uint32_t index = true_indices[c_index];
 		const vector<float>& point = points[index];
