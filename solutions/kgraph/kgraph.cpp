@@ -333,47 +333,21 @@ namespace kgraph {
             }
         }
 
-        virtual void save (char const *path, int format) const {
-            if (format == FORMAT_TEXT) {
-                std::cerr << "Saving to text file; you won't be able to load text file." << std::endl;
-                ofstream os(path);
-                os << graph.size() << endl;
-                for (unsigned i = 0; i < graph.size(); ++i) {
-                    auto const &knn = graph[i];
-                    uint32_t K = knn.size();
-                    os << K;
-                    for (unsigned k = 0; k < K; ++k) {
-                        os << ' ' << knn[k].id << ' ' << knn[k].dist;
-                    }
-                    os << endl;
-                }
-                return;
-            }
-            ofstream os(path, ios::binary);
-            uint32_t N = graph.size();
-            os.write(KGRAPH_MAGIC, KGRAPH_MAGIC_SIZE);
-            os.write(reinterpret_cast<char const *>(&SIGNATURE_VERSION), sizeof(SIGNATURE_VERSION));
-            uint32_t sig_cap = format;
-            os.write(reinterpret_cast<char const *>(&sig_cap), sizeof(sig_cap));
-            os.write(reinterpret_cast<char const *>(&N), sizeof(N));
-            vector<unsigned> nids;
-            for (unsigned i = 0; i < graph.size(); ++i) {
-                auto const &knn = graph[i];
-                uint32_t K = knn.size();
-                os.write(reinterpret_cast<char const *>(&M[i]), sizeof(M[i]));
-                os.write(reinterpret_cast<char const *>(&K), sizeof(K));
-                if (format & FORMAT_NO_DIST) {
-                    nids.resize(K);
-                    for (unsigned k = 0; k < K; ++k) {
-                        nids[k] = knn[k].id;
-                    }
-                    os.write(reinterpret_cast<char const *>(&nids[0]), K * sizeof(nids[0]));
-                }
-                else {
-                    os.write(reinterpret_cast<char const *>(&knn[0]), K * sizeof(knn[0]));
-                }
-            }
-        }
+	virtual void save (char const *path, int format) const
+	{
+		ofstream os(path, ios::out | ios::binary);
+
+		for (size_t c_point = 0; c_point < graph.size(); ++c_point) {
+			auto const &knn = graph[c_point];
+			uint32_t K = knn.size();
+			vector<uint32_t> knn_ids(K);
+			for (size_t k = 0; k < K; ++k)
+				knn_ids[k] = knn[k].id;
+			os.write(reinterpret_cast<char const *>(&knn_ids[0]), K * sizeof(uint32_t));
+		}
+
+		os.close();
+	}
 
         virtual void build (IndexOracle const &oracle, IndexParams const &param, IndexInfo *info);
 
