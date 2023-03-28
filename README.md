@@ -4,9 +4,22 @@ Team name: jfpk
 
 [Leaderboard][1]
 
-# Solution
+# Solutions
 
-Perform clustering and then exhaustively search in the nearest clusters.
+Four different solutions have been developed.
+
+* Samples: take a random subset of specified cardinality and exhaustively search
+within that sample only. This solution is based on the baseline solution
+provided by the organizers.
+
+* Nearest clusters: perform clustering and then exhaustively search in the
+nearest clusters. The number of clusters to create an the number of nearest
+clusters to search can be specified from cli arguments.
+
+* kgraph-index: kgraph algorithm creates a knng to answer queries for nearest
+neighbors of a specified point.
+
+* nn-join: based on Near Neighbor Join paper.
 
 # Runtimes
 
