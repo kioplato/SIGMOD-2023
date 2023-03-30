@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 	}
 
 	string source_path(argv[1]);
-	uint32_t sample_size(atoll(argv[2]));
+	size_t sample_size(atoll(argv[2]));
 
 	// Read data points
 	vector<vector<float>> nodes;
@@ -97,10 +97,11 @@ int main(int argc, char **argv)
 	mt19937 gen(rd());
 	shuffle(sample_indexes.begin(), sample_indexes.end(), gen);
 
-	if (sample_size > nodes.size()) {
-		cerr << "error: can't sample more points than total points" << endl;
-		exit(1);
-	}
+	/*
+	 * If the dataset's cardinality is smaller than the sample size, we
+	 * limit the sample's size to the dataset's cardinality.
+	 */
+	sample_size = min(nodes.size(), sample_size);
 	sample_indexes.resize(sample_size);
 
 	// Knng constuction
