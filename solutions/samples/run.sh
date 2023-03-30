@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DATASET_PATH=$1
+SAMPLE_SIZE=$2
+
 make clean
 make
-./baseline dummy-data.bin
+./baseline "$DATASET_PATH" "$SAMPLE_SIZE"
