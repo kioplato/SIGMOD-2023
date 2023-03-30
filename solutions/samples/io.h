@@ -1,4 +1,3 @@
-
 /**
  *  Example code for IO, read binary data vectors and write knng to path.
  *
@@ -12,10 +11,7 @@
 
 #include "assert.h"
 
-using std::cout;
-using std::endl;
-using std::string;
-using std::vector;
+using namespace std;
 
 /// @brief Save knng in binary format (uint32_t) with name "output.bin"
 /// @param knng a (N * 100) shape 2-D vector
@@ -26,8 +22,6 @@ void SaveKNNG(const std::vector<std::vector<uint32_t>> &knng,
   std::ofstream ofs(path, std::ios::out | std::ios::binary);
   const int K = 100;
   const uint32_t N = knng.size();
-  std::cout << "Saving KNN Graph (" << knng.size() << " X 100) to " << path
-            << std::endl;
   assert(knng.front().size() == K);
   for (unsigned i = 0; i < knng.size(); ++i) {
     auto const &knn = knng[i];
@@ -42,7 +36,6 @@ void SaveKNNG(const std::vector<std::vector<uint32_t>> &knng,
 /// @param data returned 2D data vectors
 void ReadBin(const std::string &file_path,
              std::vector<std::vector<float>> &data) {
-  std::cout << "Reading Data: " << file_path << std::endl;
   std::ifstream ifs;
   ifs.open(file_path, std::ios::binary);
   assert(ifs.is_open());
@@ -50,7 +43,6 @@ void ReadBin(const std::string &file_path,
 
   ifs.read((char *)&N, sizeof(uint32_t));
   data.resize(N);
-  std::cout << "# of points: " << N << std::endl;
 
   const int num_dimensions = 100;
   std::vector<float> buff(num_dimensions);
@@ -64,5 +56,4 @@ void ReadBin(const std::string &file_path,
   }
 
   ifs.close();
-  std::cout << "Finish Reading Data" << endl;
 }
