@@ -1,23 +1,16 @@
 #!/bin/bash
 
-# Benchmark the clustering solution.
+# Purpose: Benchmark the clustering solution.
 # We can specify the hyperparameters to benchmark.
 # The benchmarks results are outputed as markdown table.
 
-# The absolute path to this script.
-_SCRIPT_ABSOLUTE_PATH=$(readlink -f "$0")
-# This script's directory (this script lives in the scripts/ directory).
-_SCRIPT_DIRECTORY=$(dirname "$_SCRIPT_ABSOLUTE_PATH")
-# Project's root directory.
-_ROOT_DIR=$(readlink -f "$_SCRIPT_DIRECTORY/..")
+source "${BASH_SOURCE%/*}/get-project-root-dir.sh"
+source "${BASH_SOURCE%/*}/die.sh"
+source "${BASH_SOURCE%/*}/timer.sh"
+source "${BASH_SOURCE%/*}/logfile.sh"
+source "${BASH_SOURCE%/*}/find-unique-filename.sh"
 
-unset _SCRIPT_ABSOLUTE_PATH
-unset _SCRIPT_DIRECTORY
-
-source "$_ROOT_DIR/scripts/die.sh"
-source "$_ROOT_DIR/scripts/timer.sh"
-source "$_ROOT_DIR/scripts/logfile.sh"
-source "$_ROOT_DIR/scripts/find-unique-filename.sh"
+##### Parse the command-line arguments.
 
 # Verbose default value is 0.
 if [ -z "$VERBOSE" ]
@@ -96,7 +89,7 @@ do
 	esac
 done
 
-unset arguments
+##### Verify that all the parameters are correctly populated.
 
 # Dataset path must be set.
 if [ -z "$DATASET_PATH" ]
@@ -205,40 +198,69 @@ then
 	die "--cutoff <seconds> is not a positive number."
 fi
 
-# @unique_file describes the benchmarks performed in the filename.
-unique_file="hyperparam-benchmark-clusters"
-unique_file+="-dataset-$(basename -s .bin "$DATASET_PATH")"
-unique_file+="-clusters-$NUM_CLUSTERS_MIN-$NUM_CLUSTERS_STEP-$NUM_CLUSTERS_MAX"
-unique_file+="-iters-$NUM_ITERS_MIN-$NUM_ITERS_STEP-$NUM_ITERS_MAX"
-unique_file+="-n-nearest-clusters-$NUM_NEAREST_CLUSTERS_MIN-$NUM_NEAREST_CLUSTERS_STEP-$NUM_NEAREST_CLUSTERS_MAX"
+##### Make a unique directory to store the files of this benchmark.
+##### The dir name will describe the benchmarks performed.
 
-# Find unique file name for the log file and output file.
-find_unique_filename unique_file
+# The basename of the dataset.
+dataset_basename=$(basename -s .bin "$DATASET_PATH")
+
+# String that describes this hyperparam benchmark run.
+identifier="hyperparam-benchmarks-nearest-clusters"
+identifier+="-dataset[$dataset_basename]"
+identifier+="-clusters[$NUM_CLUSTERS_MIN:$NUM_CLUSTERS_STEP:$NUM_CLUSTERS_MAX]"
+identifier+="-iters[$NUM_ITERS_MIN:$NUM_ITERS_STEP:$NUM_ITERS_MAX]"
+identifier+="-nearest-clusters[$NUM_NEAREST_CLUSTERS_MIN:$NUM_NEAREST_CLUSTERS_STEP:$NUM_NEAREST_CLUSTERS_MAX]"
+
+# Get the project's directory path.
+get_project_root_dir "$0" ".." _ROOT_DIR
+
+# The unique directory's path.
+# We add two random characters in case we repeat the same hyperparam benchmark.
+_BENCHMARKS_DIR="$_ROOT_DIR/$identifier"
+
+if [ -d "$_BENCHMARKS_DIR" ]
+then
+	die "hyperparam combination already performed in $_BENCHMARKS_DIR/"
+fi
+
+mkdir "$_BENCHMARKS_DIR"
+
+##### Find a unique filename for both benchmarks' output and log file.
+
+# We want the log and output file to be placed in this run's directory.
+unique_prefix=$_BENCHMARKS_DIR/$identifier
+find_unique_filename unique_prefix
 
 # Set the log file path.
-set-log-file-path "$unique_file.log"
+set_log_file_path "$unique_prefix.log"
 # Set the output file path.
-_OUTPUT_FILE="$unique_file.txt"
-
-unset unique_file
-
-# Where to build the project.
-_BUILD_DIR=$(mktemp -d /tmp/SIGMOD-BENCHMARKS-Build.XXXXXXXXXX)
-# The number of cores to use for compilation.
-_N_PROCS=$(nproc)
+_OUTPUT_FILE="$unique_prefix.txt"
 
 log "Benchmarks started."
 log "Command used: $0 $*"
+log "Project's root directory: $_ROOT_DIR"
+log "Hyperparam benchmark's directory: $_BENCHMARKS_DIR"
 log "Log file: $__LOG_FILE"
 log "Benchmark's file: $_OUTPUT_FILE"
-log "Project's root directory: $_ROOT_DIR"
+
+##### Compile the nearest clusters solution.
+
+# Where to build the project.
+_BUILD_DIR="$_BENCHMARKS_DIR/Build"
+mkdir "$_BUILD_DIR"
+# The number of cores to use for compilation.
+_N_PROCS=$(nproc)
+
 log "Project's build directory: $_BUILD_DIR"
 log "Using $_N_PROCS threads for compilation."
+
+# Where the nearest clusters solution is stored.
+_SOLUTION_ROOT_DIR="$_ROOT_DIR/solutions/nearest-clusters"
 
 # Compile the project in subshell.
 (
 	# Go into the project's root directory.
-	cd "$_ROOT_DIR" || diei "could not cd $_ROOT_DIR"
+	cd "$_SOLUTION_ROOT_DIR" || diei "could not cd $_SOLUTION_ROOT_DIR"
 	# Generate makefile.
 	cmake -B"$_BUILD_DIR" -DVERBOSE=$VERBOSE >/dev/null 2>&1 || diei "failed to cmake -BBuild"
 	# cd into Build/ directory.
@@ -249,14 +271,16 @@ log "Using $_N_PROCS threads for compilation."
 
 log "Compiled project."
 
+##### Find the executable's path in Build/ dir by grep'ing the CMakeLists.txt.
+
 # Find the executable's name from CMakeLists.txt file.
-_EXE_BASENAME=$(grep -o "project([a-zA-Z0-9+]*)" "$_ROOT_DIR/CMakeLists.txt" | grep -oP "project\(\K.*?(?=\))")
+_EXE_BASENAME=$(grep -o "project([a-zA-Z0-9+]*)" "$_SOLUTION_ROOT_DIR/CMakeLists.txt" | grep -oP "project\(\K.*?(?=\))")
 # The executable's path.
 _EXE_PATH="$_BUILD_DIR/$_EXE_BASENAME"
 
-unset _EXE_BASENAME
-
 log "The executable's path: $_EXE_PATH"
+
+##### Compiling recaller for evaluation.
 
 # The path to the evaluator executable.
 _RECALLER_PATH="$_BUILD_DIR/recaller"
@@ -271,6 +295,31 @@ _RECALLER_PATH="$_BUILD_DIR/recaller"
 
 log "Compiled recaller."
 log "The recaller's path: $_RECALLER_PATH"
+
+##### Prepare for the hyperparameters benchmarks: we need some unique files.
+
+# We would like to store the benchmarks in three different ways.
+# 1. By hyperparameter significance: clusters, nearest clusters, iters.
+# 2. By execution time in incr order (fastest time first).
+# 3. By recall score in decr order (best recall score first) and when
+#    recall scores are equal we sort by execution time in incr order.
+#
+# To achieve the above we use `sort` utility. To make our lifes easier we use
+# a seperate file to store the markdown table and sort it there, because the
+# output file also contains some leading comments that we don't want to sort.
+md_table_path="$_BENCHMARKS_DIR/hyperparam-benchmark-markdown-table.txt.tmp"
+
+# We need a file to write each hyperparam combination's aprox knng.
+aprox_knng_path="$_BENCHMARKS_DIR/hyperparam-comb-aprox-knng.bin.tmp"
+
+# File to write the `time`'s calculated execution time of each benchmark.
+elapsed_time_path="$_BENCHMARKS_DIR/elapsed_time.txt.tmp"
+
+# Because of the backgrounded benchmark we can't get the solution's stdout
+# and stderr output. We need a temporary file to redirect its output there.
+benchmark_stdout_stderr="$_BENCHMARKS_DIR/benchmark_stdout_stderr.txt.tmp"
+
+##### Prepare for the hyperparameters benchmarks: add doc comments to output file.
 
 {
 	echo "<!-- Benchmarks ran using the scripts/$(basename "$0") script. -->"
@@ -292,31 +341,11 @@ log "The recaller's path: $_RECALLER_PATH"
 	echo "<!-- into will also decrease the nearest neighbors we can find. This means that the next benchmark will also fail. -->"
 	echo "<!-- That's the reason we iterate the # Nearest clusters in reverse, to be able to skip unsuccessful benchmarks. -->"
 	echo
-	echo "| Dataset | # Clusters | # Nearest clusters | # Iterations | Elapsed time | Recall | Exit status |"
+	echo "| Dataset | # Clusters | # Nearest clusters | # Iterations | Time local   | Recall | Exit status |"
 	echo "|---------|------------|--------------------|--------------|--------------|--------|-------------|"
 } > "$_OUTPUT_FILE"
 
-dataset_basename=$(basename "${DATASET_PATH%.*}")
-
-# We would like to store the benchmarks in three different ways.
-# First way is by hyperparameter significance: clusters, nearest clusters, iters.
-# Second is by execution time in increasing order.
-# Third is by decreasing recall score and then by increasing execution time.
-#
-# To achieve the above we use `sort` utility. To make our lifes easier we use
-# a seperate file to store the markdown table and sort it there, without the
-# leading comments and table's column names.
-results_tmp=$(mktemp /tmp/hyperparam-benchmark-results.XXXXXXXXXX)
-
-# We need a file to write each benchmark's aprox knng.
-aprox_knng_tmp=$(mktemp /tmp/benchmark-knng-output.bin.XXXXXXXXXX)
-
-# A file to write the `time`'s calculated execution time of each benchmark.
-elapsed_time_tmp=$(mktemp /tmp/elapsed_time.XXXXXXXXXX)
-
-# Because of the backgrounded benchmark we can't get the solution's output.
-# We need a temporary file to redirect its output there.
-benchmark_stdout_stderr=$(mktemp /tmp/benchmark_stdout_stderr.XXXXXXXXXX)
+##### Start the hyperparameters benchmarks.
 
 log "Starting iterating over hyperparameter combinations."
 
@@ -325,6 +354,9 @@ function timer-callback
 {
 	pid_to_kill=$1
 
+	# Kill the hyperparameter combination benchmark's child processes.
+	kill "$(ps -o pid= --ppid "$pid_to_kill")"
+	# Kill the hyperparameter combination benchmark itself.
 	kill "$pid_to_kill"
 }
 
@@ -344,26 +376,25 @@ do
 			log "Standard output and error of the program follows."
 			log "BENCHMARK START"
 
-			# `mktemp` creates the file.
-			rm -f "$aprox_knng_tmp"
-
 			# Run the benchmark with the current hyperparameters.
-			command time --format "%e" --quiet --output="$elapsed_time_tmp"\
+			command time --format "%e" --quiet --output="$elapsed_time_path"\
 				"$_EXE_PATH" --dataset "$DATASET_PATH"\
 				--n-clusters $n_clusters --n-iters $n_iters\
 				--n-nearest-clusters $n_nearest_clusters\
-				--output "$aprox_knng_tmp" >"$benchmark_stdout_stderr" 2>&1 &
+				--output "$aprox_knng_path" >"$benchmark_stdout_stderr" 2>&1 &
 
 			# The pid of the benchmark. We need to wait on it.
-			benchmarks_pid=$!
+			benchmark_pid=$!
+
+			echo "The pid of the benchmark is $benchmark_pid"
 
 			# Set a timer to cutoff the benchmark if its elapsed
 			# time surpasses the cutoff value set. We don't want
 			# to wait on bad hyperparameter combinations.
-			start-timer "$CUTOFF" "timer-callback $benchmarks_pid"
+			start-timer "$CUTOFF" "timer-callback $benchmark_pid"
 
 			# Wait on the benchmark.
-			wait $benchmarks_pid
+			wait -n $benchmark_pid
 			benchmark_exit_code=$?
 
 			stop-timer
@@ -387,10 +418,10 @@ do
 			# Successful execution.
 			if [ $benchmark_exit_code -eq 0 ]
 			then
-				elapsed_time=$(cat "$elapsed_time_tmp")
+				elapsed_time=$(cat "$elapsed_time_path")
 
 				# Evaluate the recall of the output.bin file.
-				eval_output=$($_RECALLER_PATH --true-knng-path "$GROUNDTRUTH_PATH" --eval-knng-path "$aprox_knng_tmp")
+				eval_output=$($_RECALLER_PATH --true-knng-path "$GROUNDTRUTH_PATH" --eval-knng-path "$aprox_knng_path")
 
 				# Get the recall score from @eval_output.
 				recall=$(echo "$eval_output" | grep -o "Recall score:[[:blank:]][0-9.]*" | awk '{print $3}')
@@ -402,59 +433,65 @@ do
 				elapsed_time=">$CUTOFF"
 				recall="NaN"
 
-				# Since this benchmarked exceeded the specified CUTOFF value, the next benchmark with more K-Means
-				# iterations will require even more time. Therefore we continue with the next nearest clusters value.
-				n_iters=$((NUM_ITERS_MAX + 1))
-
 				benchmark_success="Cutoff exceeded"
 			# The clusters are too many and the nearest clusters value too small to find 100 nearest neighbors.
 			else
 				elapsed_time="NaN"
 				recall="NaN"
 
-				benchmark_success="Can't find 100 nn"
+				benchmark_success="Runtime error"
 			fi
 
 			# Write this benchmark's results.
-			echo "| $dataset_basename | $n_clusters | $n_nearest_clusters | $n_iters | $elapsed_time | $recall | $benchmark_success |" >> "$results_tmp"
+			echo "| $dataset_basename | $n_clusters | $n_nearest_clusters | $n_iters | $elapsed_time | $recall | $benchmark_success |" >> "$md_table_path"
 
-			rm -f "$elapsed_time_tmp"
+			rm -f "$elapsed_time_path"
+			rm -f "$aprox_knng_path"
 
-			if [ $benchmark_exit_code -ne 0 ] && [ $benchmark_exit_code -ne 138 ]
+			# Since this benchmark exceeded the specified CUTOFF value, the next benchmark with more K-Means
+			# iterations will require even more time. Therefore we continue with the next nearest clusters value.
+			if [ $benchmark_exit_code -eq 138 ]
+			then
+				# Satify iterations hyperparameter loop.
+				n_iters=$((NUM_ITERS_MAX + 1))
+			# Runtime error most probably was caused by not being
+			# able to find 100 nearest points with this number of
+			# clusters and nearest number of clusters combination.
+			elif [ $benchmark_exit_code -ne 0 ] && [ $benchmark_exit_code -ne 138 ]
 			then
 				# Proceed with the next @c_clusters value.
 				n_iters=$((NUM_ITERS_MAX + 1))
 				n_nearest_clusters=0
-			fi
+			fi 
 		done
 	done
 done
 
-rm -f "$aprox_knng_tmp"
+rm -f "$aprox_knng_path"
 
 # Append the hyperparameter benchmark results in the three sorted orders.
 {
 	# Sort by hyperparameter significance.
-	cat "$results_tmp"
+	cat "$md_table_path"
 
 	# Sort by execution time in increasing order.
 	echo
 	echo "| Dataset | # Clusters | # Nearest clusters | # Iterations | Elapsed time | Recall | Success |"
 	echo "|---------|------------|--------------------|--------------|--------------|--------|---------|"
-	sort -k10 -n "$results_tmp"
+	sort -k10 -n "$md_table_path"
 
 	# Sort by recall score and then by increasing execution time.
 	echo
 	echo "| Dataset | # Clusters | # Nearest clusters | # Iterations | Elapsed time | Recall | Success |"
 	echo "|---------|------------|--------------------|--------------|--------------|--------|---------|"
-	sort -k12r -k10 -n "$results_tmp"
+	sort -k12r -k10 -n "$md_table_path"
 } >> "$_OUTPUT_FILE"
 
 log "Hyperparameter benchmarks complete."
 
 log "Cleaning up /tmp directory."
 rm -rf "$_BUILD_DIR"
-rm -rf "$results_tmp"
+rm -rf "$md_table_path"
 rm -f "$benchmark_stdout_stderr"
 
 log "Results written at $_OUTPUT_FILE"

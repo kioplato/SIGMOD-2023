@@ -5,13 +5,13 @@
 __LOG_FILE=""
 
 # Set the log file's path.
-function set-log-file-path()
+function set_log_file_path
 {
 	# The path to the log file.
 	__LOG_FILE=$1
 }
 
-function log()
+function log
 {
 	# The string to write to the log file.
 	str=$1
