@@ -70,7 +70,7 @@ void ConstructKnng(const vector<vector<float>> &data,
 {
 	knng.resize(data.size());
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(guided, 1)
 	for (uint32_t n = 0; n < knng.size(); ++n)
 		knng[n] = CalculateOneKnn(data, sample_indexes, n);
 }
