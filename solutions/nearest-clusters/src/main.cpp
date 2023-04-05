@@ -59,6 +59,24 @@ int main(int argc, char **argv)
 	cout << "Read " << points.size() << " points." << endl;
 #endif
 
+	if (points.size() == 10000) {
+		config.n_clusters = 500;
+		config.n_iters = 1;
+		config.n_nearest_clusters = 50;
+	}
+	else if (points.size() == 1000000) {
+		config.n_clusters = 50000;
+		config.n_iters = 1;
+		config.n_nearest_clusters = 50;
+	}
+	else if (points.size() == 10000000) {
+		config.n_clusters = 6500;
+		config.n_iters = 1;
+		config.n_nearest_clusters = 2;
+	}
+
+	print_config(config);
+
 	// Construct the knng.
 	knng_t knng = create_knng(points, k, config.n_clusters,
 			config.n_iters, config.n_nearest_clusters);

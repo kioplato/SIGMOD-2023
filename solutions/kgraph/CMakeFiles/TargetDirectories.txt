@@ -1,0 +1,10 @@
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/kgraph.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/kgrapha.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/index.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/search.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/edit_cache.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/rebuild_cache.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/list_install_components.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/install.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/install/local.dir
+/home/kioplato/Desktop/SIGMOD-2023/solutions/kgraph/CMakeFiles/install/strip.dir

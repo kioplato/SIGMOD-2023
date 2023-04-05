@@ -1,0 +1,21 @@
+<!-- Benchmarks ran using the scripts/benchmark-hyperparameters.sh script. -->
+
+<!-- Command used to run the script: -->
+<!-- ./scripts/benchmark-hyperparameters.sh --dataset datasets/10k.bin --ground-truth true-knngs/true-knngs-10k/true-10k-sample-10k.bin --n-clusters-min 10 --n-clusters-max 510 --n-clusters-step 50 --n-iters-min 1 --n-iters-max 1 --n-iters-step 1 --n-nearest-clusters-min 10 --n-nearest-clusters-max 50 --n-nearest-clusters-step 10 --cutoff 2 -->
+
+<!-- Dataset benchmarked: -->
+<!-- datasets/10k.bin -->
+
+<!-- Hyperparameters tested: -->
+<!-- Number of clusters in [10:50:510]. -->
+<!-- K-Means iterations in [1:1:1]. -->
+<!-- Number of nearest clusters in [10:10:50]. -->
+
+<!-- Some benchmarks may fail because the algorithm cound not find 100 nearest neighbor for at least one point. -->
+<!-- In this case the Success column will be False and the next benchmark will skip the rest # Nearest clusters -->
+<!-- values and proceed with the next # Clusters value. That's because decreasing the # Nearest clusters we search -->
+<!-- into will also decrease the nearest neighbors we can find. This means that the next benchmark will also fail. -->
+<!-- That's the reason we iterate the # Nearest clusters in reverse, to be able to skip unsuccessful benchmarks. -->
+
+| Dataset | # Clusters | # Nearest clusters | # Iterations | Time local   | Recall | Exit status |
+|---------|------------|--------------------|--------------|--------------|--------|-------------|

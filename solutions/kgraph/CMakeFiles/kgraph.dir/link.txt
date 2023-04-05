@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -g -Wall -msse2 -O3 -std=c++11 -fPIC -fopenmp -O3 -DNDEBUG -shared -Wl,-soname,libkgraph.so -o libkgraph.so CMakeFiles/kgraph.dir/kgraph.cpp.o CMakeFiles/kgraph.dir/metric.cpp.o 

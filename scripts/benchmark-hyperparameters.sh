@@ -262,7 +262,7 @@ _SOLUTION_ROOT_DIR="$_ROOT_DIR/solutions/nearest-clusters"
 	# Go into the project's root directory.
 	cd "$_SOLUTION_ROOT_DIR" || diei "could not cd $_SOLUTION_ROOT_DIR"
 	# Generate makefile.
-	cmake -B"$_BUILD_DIR" -DVERBOSE=$VERBOSE >/dev/null 2>&1 || diei "failed to cmake -BBuild"
+	cmake -B"$_BUILD_DIR" -DVERBOSE=$VERBOSE || diei "failed to cmake -BBuild"
 	# cd into Build/ directory.
 	cd "$_BUILD_DIR" || diei "could not cd $_BUILD_DIR"
 	# Compile the project.

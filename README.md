@@ -13,7 +13,7 @@ within that sample only. This solution is based on the baseline solution
 provided by the organizers.
 
 * Nearest clusters: perform clustering and then exhaustively search in the
-nearest clusters. The number of clusters to create an the number of nearest
+nearest clusters. The number of clusters to create and the number of nearest
 clusters to search can be specified from cli arguments.
 
 * kgraph-index: kgraph algorithm creates a knng to answer queries for nearest
@@ -23,33 +23,40 @@ neighbors of a specified point.
 
 # Runtimes
 
-The benchmarks are performed on the local machine.\
-Local machine is AMD EPYC 16 vcpu cores and 32GB RAM.
+The benchmarks are performed on multiple computers:
+* Local: i7 1185G7, 16GB RAM.
+* Vultr 8: 8 dedicated vcpus, 16GB RAM.
+* Eval: Azure Standard F32s\_v2 (32 cores, 32 threads), 64GB RAM.
 
-The evaluation is performed on the eval machine.\
-Eval machine is Azure Standard F32s_v2 (32 cores, 32 threads), 64GB RAM.
+## Samples solution benchmarks
 
-The local machine is x2 slower than eval machine.\
-Baseline solution for 1m dataset requires 20min on eval and 37min on local.
+| Dataset | Sample size | Local time | Vultr 8 time | Eval time | Ratio Vultr/Eval | Recall |
+|---------|-------------|------------|--------------|-----------|------------------|--------|
+| 10m     | 100         | 38         | 31           | 91        | 0.340659         | 0.000  |
+| 10m     | 1000        | 240        | 267          | 140       | 1.907143         | 0.000  |
+| 10m     | 5000        | 1352       | 1242         | 400       | 3.105            | 0.000  |
+| 10m     | 10000       |            | 2344         | 727       | 3.224209         | 0.001  |
+| 10m     | 12500       |            | 3472         | 953       | 3.643232         | 0.001  |
+| 10m     | 15000       |            |              | 1038      |                  | 0.001  |
+| 10m     | 20000       |            |              | 1355      |                  | 0.002  |
+| 10m     | 30000       |            |              | >1860     |                  |        |
 
-| Dataset | # Clusters | Recall | Runtime local | Runtime eval |
-|---------|------------|--------|---------------|--------------|
-| 10k     | 1          | ?      | 1.750 secs    | NaN          |
-| 10k     | 2          | ?      | 1.250 secs    | NaN          |
-| 10k     | 3          | ?      | 0.950 secs    | NaN          |
-| 10k     | 4          | ?      | 0.800 secs    | NaN          |
-| 10k     | 5          | ?      | 0.610 secs    | NaN          |
-| 10k     | 6          | ?      | 0.650 secs    | NaN          |
-| 10k     | 7          | ?      | 0.630 secs    | NaN          |
-| 10k     | 8          | ?      | 0.700 secs    | NaN          |
-| 10k     | 9          | ?      | 0.630 secs    | NaN          |
-| 10k     | 10         | ?      | 0.500 secs    | NaN          |
-| 10k     | 11         | ?      | 0.760 secs    | NaN          |
-| 10k     | 12         | ?      | 0.550 secs    | NaN          |
-| 10k     | 13         | ?      | 0.475 secs    | NaN          |
-| 10k     | 14         | ?      | 0.420 secs    | NaN          |
-| 10m     | 8          | NaN    | ?             | TLE          |
-| 10m     | 32         | NaN    | ?             | TLE          |
+## Nearest clusters solution benchmarks
+
+| Dataset | # Clusters | # Iterations | # Nearest clusters | Local time | Eval time | Recall |
+|---------|------------|--------------|--------------------|------------|-----------|--------|
+| 10m     | 500\_000   | 1            | 15                 | TBD        | TLE       | TBD    |
+| 10m     | 50\_000    | 1            | 1                  | TBD        | TLE       | TBD    |
+| 10m     | 10\_000    | 1            | 1                  | TBD        | 1493      | 0.067  |
+| 10m     | 12_500     | 1            | 2                  | TBD        | TLE       | TBD    |
+| 10m     | 7_500      | 1            | 1                  | TBD        | 1308      | 0.071  |
+| 10m     | 7_500      | 1            | 2                  | TBD        | 1699      | 0.116  |
+| 10m     | 3_750      | 1            | 1                  | TBD        | 1224      | 0.086  |
+| 10m     | 3_750      | 1            | 2                  | TBD        |           |        |
+
+## KGraph index construction
+
+## Near neighbor join
 
 # Find best hyperparameters
 

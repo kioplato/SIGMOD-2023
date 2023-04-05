@@ -1,0 +1,1 @@
+/usr/bin/c++  -g -Wall -msse2 -O3 -std=c++11 -fPIC -fopenmp -O3 -DNDEBUG -rdynamic CMakeFiles/index.dir/index.cpp.o -o index  libkgraph.a /usr/lib/x86_64-linux-gnu/libboost_timer.so.1.74.0 /usr/lib/x86_64-linux-gnu/libboost_chrono.so.1.74.0 /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib/x86_64-linux-gnu/libboost_program_options.so.1.74.0 -lrt 

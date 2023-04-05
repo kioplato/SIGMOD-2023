@@ -1,0 +1,22 @@
+[01/04/23 15:11:23]: Benchmarks started.
+[01/04/23 15:11:23]: Command used: ./scripts/benchmark-hyperparameters.sh --dataset datasets/10k.bin --ground-truth true-knngs/true-knngs-10k/true-10k-sample-10k.bin --n-clusters-min 10 --n-clusters-max 510 --n-clusters-step 50 --n-iters-min 1 --n-iters-max 1 --n-iters-step 1 --n-nearest-clusters-min 10 --n-nearest-clusters-max 50 --n-nearest-clusters-step 10 --cutoff 2
+[01/04/23 15:11:23]: Project's root directory: /home/kioplato/Desktop/SIGMOD-2023
+[01/04/23 15:11:23]: Hyperparam benchmark's directory: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]
+[01/04/23 15:11:23]: Log file: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]-1.log
+[01/04/23 15:11:23]: Benchmark's file: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]-1.txt
+[01/04/23 15:11:23]: Project's build directory: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]/Build
+[01/04/23 15:11:23]: Using 8 threads for compilation.
+[01/04/23 15:11:32]: Compiled project.
+[01/04/23 15:11:32]: The executable's path: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]/Build/knng
+[01/04/23 15:11:33]: Compiled recaller.
+[01/04/23 15:11:33]: The recaller's path: /home/kioplato/Desktop/SIGMOD-2023/hyperparam-benchmarks-nearest-clusters-dataset[10k]-clusters[10:50:510]-iters[1:1:1]-nearest-clusters[10:10:50]/Build/recaller
+[01/04/23 15:11:33]: Starting iterating over hyperparameter combinations.
+[01/04/23 15:11:33]: ===== Benchmarking with 10 clusters, 10 neighborhood size and 1 iterations. =====
+[01/04/23 15:11:33]: Standard output and error of the program follows.
+[01/04/23 15:11:33]: BENCHMARK START
+[01/04/23 15:11:35]: Benchmark's return value = 138
+[01/04/23 15:11:35]: BENCHMARK END
+[01/04/23 15:11:35]: ===========================================================
+[01/04/23 15:11:35]: ===== Benchmarking with 60 clusters, 50 neighborhood size and 1 iterations. =====
+[01/04/23 15:11:35]: Standard output and error of the program follows.
+[01/04/23 15:11:35]: BENCHMARK START

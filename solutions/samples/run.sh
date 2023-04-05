@@ -2,4 +2,4 @@
 
 make clean
 make
-./baseline dummy-data.bin 1000
+./baseline dummy-data.bin 100
