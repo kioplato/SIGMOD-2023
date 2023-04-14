@@ -553,9 +553,9 @@ int main(void)
 
 	// Read the dataset from the dummy-data.txt file.
 	// The returned memory should be free'd.
-	auto [points, n_points] = read_dataset("../../datasets/1m.bin");
+	auto [points, n_points] = read_dataset("dummy-data.bin");
 
-	cout << "Printing dataset:" << endl;
+	//cout << "Printing dataset:" << endl;
 	//for (uint32_t c_point = 0; c_point < n_points; ++c_point)
 	//	for (uint32_t c_dim = 0; c_dim < 100; ++c_dim)
 	//		cout << c_point << "-th point's " << c_dim << "-th dimension = " << points[c_point].coordinates[c_dim] << endl;
