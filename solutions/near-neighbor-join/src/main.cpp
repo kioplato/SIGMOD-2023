@@ -118,7 +118,7 @@ pair<Point*, uint32_t> read_dataset(const string& path)
 
 void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& part_size, const uint32_t& n_clusters, float *distances, const uint32_t& next_BU_indices_start, unordered_map<uint32_t,vector<uint32_t>>& representatives)
 {
-	printf("[thread %u]: In K-means.\n", omp_get_thread_num());
+	//printf("[thread %u]: In K-means.\n", omp_get_thread_num());
 
 	// The medoid of each cluster, with indices in [0, part_size).
 	uint32_t medoid_raw[n_clusters];
@@ -177,8 +177,8 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 			medoid_distances[best_cluster_index][c_member] += distance;
 			medoid_distances[best_cluster_index][n_members[best_cluster_index]] += distance;
 
-			printf("[thread %u]: medoid_distances[best_cluster_index][c_member] = %f\n", omp_get_thread_num(), medoid_distances[best_cluster_index][c_member]);
-			printf("[thread %u]: best_medoid_distance = %f\n", omp_get_thread_num(), best_medoid_distance);
+			//printf("[thread %u]: medoid_distances[best_cluster_index][c_member] = %f\n", omp_get_thread_num(), medoid_distances[best_cluster_index][c_member]);
+			//printf("[thread %u]: best_medoid_distance = %f\n", omp_get_thread_num(), best_medoid_distance);
 
 			// Update the current best medoid.
 			if (medoid_distances[best_cluster_index][c_member] < best_medoid_distance) {
@@ -210,14 +210,14 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 	// Copy the next BU level indices to @BU_indices.
 	memcpy(BU_indices + next_BU_indices_start, medoid, sizeof(uint32_t) * n_clusters);
 
-	printf("[thread %u]: Out K-means.\n", omp_get_thread_num());
+	//printf("[thread %u]: Out K-means.\n", omp_get_thread_num());
 }
 
 static inline void
 compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part_begin,
 		const uint32_t& part_size, float *distances)
 {
-	printf("[thread %u]: In compute_distances.\n", omp_get_thread_num());
+	//printf("[thread %u]: In compute_distances.\n", omp_get_thread_num());
 
 	Pair pair;
 
@@ -226,9 +226,9 @@ compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part
 
 	for (uint32_t c_row = 0; c_row < part_size; ++c_row) {
 		for (uint32_t c_col = c_row + 1; c_col < part_size; ++c_col) {
-			printf("[thread %u]: Iterating distances.\n", omp_get_thread_num());
-			printf("[thread %u]: c_row = %u.\n", omp_get_thread_num(), c_row);
-			printf("[thread %u]: c_col = %u.\n", omp_get_thread_num(), c_col);
+			//printf("[thread %u]: Iterating distances.\n", omp_get_thread_num());
+			//printf("[thread %u]: c_row = %u.\n", omp_get_thread_num(), c_row);
+			//printf("[thread %u]: c_col = %u.\n", omp_get_thread_num(), c_col);
 			Point& from = points[BU_indices[thr_part_begin + c_row]];
 			Point& to = points[BU_indices[thr_part_begin + c_col]];
 
@@ -259,7 +259,7 @@ compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part
 		}
 	}
 
-	printf("[thread %u]: Out compute_distances.\n", omp_get_thread_num());
+	//printf("[thread %u]: Out compute_distances.\n", omp_get_thread_num());
 }
 
 void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_size, uint32_t n_clusters)
@@ -271,8 +271,8 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 		// The ID of this thread.
 		const uint32_t thr_id = omp_get_thread_num();
 
-		#pragma omp master
-		printf("[thread %u]: Using %u threads.\n", thr_id, n_thr);
+		//#pragma omp single
+		//printf("[thread %u]: Using %u threads.\n", thr_id, n_thr);
 
 		/* Compute the thread's chunk info. */
 		// Each thread's base chunk size.
@@ -316,7 +316,7 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 		// are less then the specified @partition_size.
 		bool thr_done = thr_BU_size < partition_size;
 
-		printf("[thread %u]: Done = %d.\n", thr_id, thr_done);
+		//printf("[thread %u]: Done = %d.\n", thr_id, thr_done);
 
 		// From which index to write the next BU level's indices.
 		uint32_t next_BU_indices_start = 0;
@@ -341,16 +341,16 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 				// The size of this partition.
 				part_size = thr_base_part_size + (c_part < thr_part_one_more);
 
-				printf("[thread %u]: Size of %u partition = %u.\n", thr_id, c_part, part_size);
+				//printf("[thread %u]: Size of %u partition = %u.\n", thr_id, c_part, part_size);
 
 				// Compute the distance between all pairs of the partition.
 				float distances[part_size][part_size];
 				compute_distances(points, BU_indices, thr_part_begin, part_size, (float*)distances);
 
-				printf("[thread %u]: Printing distances:.\n", thr_id);
-				for (uint32_t i = 0; i < part_size; ++i)
-					for (uint32_t j = 0; j < part_size; ++j)
-						printf("[thread %u]: distances[%u][%u] = %f\n", thr_id, i, j, distances[i][j]);
+				//printf("[thread %u]: Printing distances:.\n", thr_id);
+				//for (uint32_t i = 0; i < part_size; ++i)
+					//for (uint32_t j = 0; j < part_size; ++j)
+						//printf("[thread %u]: distances[%u][%u] = %f\n", thr_id, i, j, distances[i][j]);
 
 				// Perform K-Means clustering (one iteration).
 				kmeans(BU_indices, thr_part_begin, part_size, n_clusters, (float*)distances, next_BU_indices_start, representatives.back());
@@ -361,17 +361,17 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 				next_BU_indices_start += n_clusters;
 
 				// Printing the representatives.
-				for (const unordered_map<uint32_t, vector<uint32_t>>& BU_level : representatives) {
-					cout << "BU level." << endl;
-					for (const auto& pair : BU_level) {
-						cout << '{' << pair.first << ": ";
+				//for (const unordered_map<uint32_t, vector<uint32_t>>& BU_level : representatives) {
+				//	cout << "BU level." << endl;
+				//	for (const auto& pair : BU_level) {
+				//		cout << '{' << pair.first << ": ";
 
-						for (const auto& item : pair.second)
-							cout << item << ' ';
+				//		for (const auto& item : pair.second)
+				//			cout << item << ' ';
 
-						cout << '}' << endl;
-					}
-				}
+				//		cout << '}' << endl;
+				//	}
+				//}
 
 			}
 
@@ -540,7 +540,7 @@ int main(void)
 
 	/* The hyperparameters of the problem (Table I). */
 	// The size of each partition per thread.
-	uint32_t partition_size = 3;
+	uint32_t partition_size = 1250;
 	// The number of clusters to create per partition.
 	uint32_t n_clusters = 1;
 	// Number of top object pairs for each TD iteration.
@@ -553,23 +553,23 @@ int main(void)
 
 	// Read the dataset from the dummy-data.txt file.
 	// The returned memory should be free'd.
-	auto [points, n_points] = read_dataset("../../datasets/50.bin");
+	auto [points, n_points] = read_dataset("../../datasets/1m.bin");
 
 	cout << "Printing dataset:" << endl;
-	for (uint32_t c_point = 0; c_point < n_points; ++c_point)
-		for (uint32_t c_dim = 0; c_dim < 100; ++c_dim)
-			cout << c_point << "-th point's " << c_dim << "-th dimension = " << points[c_point].coordinates[c_dim] << endl;
+	//for (uint32_t c_point = 0; c_point < n_points; ++c_point)
+	//	for (uint32_t c_dim = 0; c_dim < 100; ++c_dim)
+	//		cout << c_point << "-th point's " << c_dim << "-th dimension = " << points[c_point].coordinates[c_dim] << endl;
 
 	// Perform near neighbor join algorithm.
 	printf("===== Near Neighbor Join (start) =====\n");
 	near_neighbor_join(points, n_points, partition_size, n_clusters);
 	printf("===== Near Neighbor Join (exits) =====\n");
 
-	for (uint32_t c_point = 0; c_point < n_points; ++c_point)
-		cout << c_point << "-th point has " << points[c_point].n_neighbors << " neighbors." << endl;
+	//for (uint32_t c_point = 0; c_point < n_points; ++c_point)
+		//cout << c_point << "-th point has " << points[c_point].n_neighbors << " neighbors." << endl;
 
 	// Write the knng to disk.
-	//write_knng(points, n_points, "output.bin");
+	write_knng(points, n_points, "output.bin");
 
 	free(points);
 
