@@ -4,7 +4,7 @@
 
 CC = g++
 OPTION = -I./ -DIN_PARALLEL -fopenmp
-LFLAGS = -std=c++11 -O3 $(OPTION) -march=native -mtune=native
+LFLAGS = -std=c++17 -O3 $(OPTION) -march=native -mtune=native
 
 all: nnj
 

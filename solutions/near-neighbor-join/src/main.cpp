@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cmath>
 #include <cstring>
+#include <unistd.h>
 #include <omp.h>
 
 #include "heap.hpp"
@@ -82,6 +83,11 @@ euclidean_distance_aprox(const Point& point1, const Point& point2)
 	return distance;
 }
 
+static inline uint32_t triu(uint32_t i, uint32_t j, uint32_t size)
+{
+	return i*(size-1) - ((i-1)*i)/2 + j - i - 1;
+}
+
 pair<Point*, uint32_t> read_dataset(const string& path)
 {
 	// Open the dataset from the disk.
@@ -118,8 +124,8 @@ pair<Point*, uint32_t> read_dataset(const string& path)
 
 void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& part_size, const uint32_t& n_clusters, float *distances, const uint32_t& next_BU_indices_start, unordered_map<uint32_t,vector<uint32_t>>& representatives)
 {
-	//printf("[thread %u]: In K-means.\n", omp_get_thread_num());
-
+	// The actual medoid indices in @points.
+	uint32_t medoid[n_clusters];
 	// The medoid of each cluster, with indices in [0, part_size).
 	uint32_t medoid_raw[n_clusters];
 	// The distances between the members of each cluster.
@@ -139,7 +145,7 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 
 		medoid_distances[c_cluster][0] = 0;
 
-		// The centroid is a member of the cluster.
+		// The medoid is a member of the cluster.
 		members[c_cluster][0] = BU_indices[part_begin + c_cluster];
 		members_raw[c_cluster][0] = c_cluster;
 
@@ -150,13 +156,14 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 	for (uint32_t c_point = n_clusters; c_point < part_size; ++c_point) {
 		// Initialize the point's best cluster as the first cluster.
 		uint32_t best_cluster_index = 0;
-		float best_distance = distances[c_point * part_size + medoid_raw[0]];
+		// medoid_raw[0] is less than c_point always, since medoid_raw[0] is before c_point.
+		float best_distance = distances[triu(medoid_raw[0], c_point, part_size)];
 
 		// Iterate over all the other clusters and find the best cluster.
 		for (uint32_t c_cluster = 1; c_cluster < n_clusters; ++c_cluster) {
-			if (distances[c_point * part_size + medoid_raw[c_cluster]] < best_distance) {
+			if (distances[triu(medoid_raw[c_cluster], c_point, part_size)] < best_distance) {
 				best_cluster_index = c_cluster;
-				best_distance = distances[c_point * part_size + medoid_raw[c_cluster]];
+				best_distance = distances[triu(medoid_raw[c_cluster], c_point, part_size)];
 			}
 		}
 
@@ -164,8 +171,8 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 		members[best_cluster_index][n_members[best_cluster_index]] = BU_indices[part_begin + c_point];
 		members_raw[best_cluster_index][n_members[best_cluster_index]] = c_point;
 
-		// Update the medoid distances and the cluster's medoid.
-		float distance = distances[members_raw[best_cluster_index][0] * part_size + c_point];
+		// Update the medoid distances and the cluster's medoid for more accuracy.
+		float distance = distances[triu(members_raw[best_cluster_index][0], c_point, part_size)];
 		medoid_distances[best_cluster_index][0] += distance;
 		medoid_distances[best_cluster_index][n_members[best_cluster_index]] = distance;
 
@@ -173,7 +180,7 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 		float best_medoid_distance = medoid_distances[best_cluster_index][0];
 
 		for (uint32_t c_member = 1; c_member < n_members[best_cluster_index]; ++c_member) {
-			distance = distances[members_raw[best_cluster_index][c_member] * part_size + c_point];
+			distance = distances[triu(members_raw[best_cluster_index][c_member], c_point, part_size)];
 			medoid_distances[best_cluster_index][c_member] += distance;
 			medoid_distances[best_cluster_index][n_members[best_cluster_index]] += distance;
 
@@ -192,16 +199,14 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 				best_medoid_distance = medoid_distances[best_cluster_index][n_members[best_cluster_index]];
 		}
 
-		medoid_raw[best_cluster_index] = best_medoid_index;
+		// The index of the medoid of the @c_cluster in @members.
+		medoid_raw[best_cluster_index] = members_raw[best_cluster_index][best_medoid_index];
 
 		++n_members[best_cluster_index];
 	}
 
-	// The actual medoid indices in @points.
-	uint32_t medoid[n_clusters];
-
 	// Add the medoids to the hash table with the representatives.
-	// While at it, also update the next BU level's indices.
+	// While at it, also populate the @medoid array with the true indices for the next BU level.
 	for (uint32_t c_cluster = 0; c_cluster < n_clusters; ++c_cluster) {
 		representatives[BU_indices[part_begin + medoid_raw[c_cluster]]] = vector<uint32_t>(members[c_cluster], members[c_cluster] + n_members[c_cluster]);
 		medoid[c_cluster] = BU_indices[part_begin + medoid_raw[c_cluster]];
@@ -209,6 +214,12 @@ void kmeans(uint32_t BU_indices[], const uint32_t& part_begin, const uint32_t& p
 
 	// Copy the next BU level indices to @BU_indices.
 	memcpy(BU_indices + next_BU_indices_start, medoid, sizeof(uint32_t) * n_clusters);
+
+	//printf("[thread %u]: Printing the medoids of this partition:\n", omp_get_thread_num());
+	//for (uint32_t i = 0; i < n_clusters; ++i) {
+	//	printf("[thread %u]: medoid_raw[%u] = %u.\n", omp_get_thread_num(), i, medoid_raw[i]);
+	//	printf("[thread %u]: medoid[%u] = %u.\n", omp_get_thread_num(), i, medoid[i]);
+	//}
 
 	//printf("[thread %u]: Out K-means.\n", omp_get_thread_num());
 }
@@ -221,9 +232,6 @@ compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part
 
 	Pair pair;
 
-	for (uint32_t c_diag = 0; c_diag < part_size; ++c_diag)
-		distances[c_diag * part_size + c_diag] = 0;
-
 	for (uint32_t c_row = 0; c_row < part_size; ++c_row) {
 		for (uint32_t c_col = c_row + 1; c_col < part_size; ++c_col) {
 			//printf("[thread %u]: Iterating distances.\n", omp_get_thread_num());
@@ -234,8 +242,7 @@ compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part
 
 			float distance = euclidean_distance_aprox(from, to);
 
-			distances[c_row * part_size + c_col] = distance;
-			distances[c_col * part_size + c_row] = distance;
+			distances[triu(c_row, c_col, part_size)] = distance;
 
 			// Setup the pair for the @from point.
 			pair = {from.id, to.id, distance};
@@ -262,8 +269,21 @@ compute_distances(Point *points, uint32_t BU_indices[], const uint32_t& thr_part
 	//printf("[thread %u]: Out compute_distances.\n", omp_get_thread_num());
 }
 
-void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_size, uint32_t n_clusters)
+void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_size, uint32_t n_clusters, uint32_t P)
 {
+	/* Variables that are shared between all threads. */
+	// Buffer to write the last BU level's representatives of all threads.
+	uint32_t *last_BU_level_representatives = NULL;
+
+	// Buffer to write the topP pairs of each TD level.
+	Pair *topP_pairs = NULL;
+
+	// The from and to candidates of the topP pairs. The first candidate of
+	// each topP pair is the number of candidates stored in the from / to candidates.
+	uint32_t *from_cands = NULL;
+	uint32_t *to_cands = NULL;
+
+	/* The near neighbor join algorithm starts. */
 	#pragma omp parallel
 	{
 		// The number of total threads.
@@ -290,7 +310,7 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 		// The size of the next BU level of this thread.
 		uint32_t thr_BU_size = thr_chunk_size;
 
-		printf("[thread %u]: Chunk size = %u.\n", thr_id, thr_chunk_size);
+		//printf("[thread %u]: Chunk size = %u.\n", thr_id, thr_chunk_size);
 
 		/* Compute the thread's partitions' info. */
 		// The thread's number of partitions.
@@ -306,15 +326,13 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 		for (uint32_t i = 0; i < thr_chunk_size; ++i)
 			BU_indices[i] = thr_index_begin + i;
 
-		// The size of the next BU level.
-		uint32_t thr_next_BU_size = thr_n_parts * n_clusters;
-
 		// Which points each representative represents.
 		vector<unordered_map<uint32_t, vector<uint32_t>>> representatives;
 
 		// We are done when the points of the next BU iteration
 		// are less then the specified @partition_size.
-		bool thr_done = thr_BU_size < partition_size;
+		bool thr_done = thr_BU_size <= partition_size;
+		//bool thr_done = thr_BU_size / (partition_size / n_clusters);
 
 		//printf("[thread %u]: Done = %d.\n", thr_id, thr_done);
 
@@ -324,13 +342,19 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 		// Where the next thread's partition begin.
 		uint32_t thr_part_begin;
 		// The size of the current partition.
-		uint32_t part_size;
+		uint32_t part_size = thr_base_part_size + (0 < thr_part_one_more);
 
 		uint32_t current_iteration = 1;
 
+		float *distances = (float*)malloc(sizeof(float) * ((part_size * part_size) - part_size) / 2);
+
 		while (!thr_done) {
-			printf("[thread %u]: Performing %u-th iteration.\n", thr_id, current_iteration);
-			printf("[thread %u]: Partitions in this iteration = %u.\n", thr_id, thr_n_parts);
+			//printf("[thread %u]: ========== Performing %u-th iteration.\n", thr_id, current_iteration);
+			//printf("[thread %u]: Partitions in this iteration = %u.\n", thr_id, thr_n_parts);
+
+			//printf("[thread %u]: Printing BU indices of the upcoming BU level.\n", thr_id);
+			//for (uint32_t i = 0; i < thr_BU_size; ++i)
+			//	printf("[thread %u]: BU_indices[%u] = %u\n", thr_id, i, BU_indices[i]);
 
 			representatives.push_back(unordered_map<uint32_t,vector<uint32_t>>());
 
@@ -344,8 +368,8 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 				//printf("[thread %u]: Size of %u partition = %u.\n", thr_id, c_part, part_size);
 
 				// Compute the distance between all pairs of the partition.
-				float distances[part_size][part_size];
-				compute_distances(points, BU_indices, thr_part_begin, part_size, (float*)distances);
+				//float distances[part_size][part_size];
+				compute_distances(points, BU_indices, thr_part_begin, part_size, distances);
 
 				//printf("[thread %u]: Printing distances:.\n", thr_id);
 				//for (uint32_t i = 0; i < part_size; ++i)
@@ -353,31 +377,31 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 						//printf("[thread %u]: distances[%u][%u] = %f\n", thr_id, i, j, distances[i][j]);
 
 				// Perform K-Means clustering (one iteration).
-				kmeans(BU_indices, thr_part_begin, part_size, n_clusters, (float*)distances, next_BU_indices_start, representatives.back());
+				kmeans(BU_indices, thr_part_begin, part_size, n_clusters, distances, next_BU_indices_start, representatives.back());
 
 				// Next partition start after the current one.
-				thr_part_begin += thr_base_part_size + (c_part < thr_part_one_more);
+				thr_part_begin += part_size;
 				// Continue to write the next BU level's indices from where this iteration left off.
 				next_BU_indices_start += n_clusters;
-
-				// Printing the representatives.
-				//for (const unordered_map<uint32_t, vector<uint32_t>>& BU_level : representatives) {
-				//	cout << "BU level." << endl;
-				//	for (const auto& pair : BU_level) {
-				//		cout << '{' << pair.first << ": ";
-
-				//		for (const auto& item : pair.second)
-				//			cout << item << ' ';
-
-				//		cout << '}' << endl;
-				//	}
-				//}
-
 			}
 
+			// Printing the representatives.
+			//const unordered_map<uint32_t, vector<uint32_t>>& BU_level = representatives.back();
+			//printf("[thread %u]: %u BU level:\n", thr_id, current_iteration);
+			//for (const auto& pair : BU_level) {
+			//	cout << '{' << pair.first << ": ";
+
+			//	for (const auto& item : pair.second)
+			//		cout << item << ' ';
+
+			//	cout << '}' << endl;
+			//}
+
 			/* Bookkeeping for the next BU iteration level. */
+			uint32_t thr_BU_size_prev = thr_BU_size;
 			thr_BU_size = thr_n_parts * n_clusters;
-			thr_done = thr_BU_size < partition_size;
+			thr_done = thr_BU_size <= partition_size || thr_BU_size_prev == thr_BU_size;
+			//thr_done = thr_BU_size / (partition_size / n_clusters);
 
 			thr_n_parts = ceil((float)thr_BU_size / partition_size);
 			thr_base_part_size = thr_BU_size / thr_n_parts;
@@ -387,7 +411,474 @@ void near_neighbor_join(Point *points, uint32_t n_points, uint32_t partition_siz
 
 			++current_iteration;
 		}
+
+		//#pragma omp critical
+		//{
+		//	printf("[thread %u]: Performed %u BU levels.\n", thr_id, current_iteration - 1);
+		//	printf("[thread %u]: Representatives contain %lu levels.\n", thr_id, representatives.size());
+		//	printf("[thread %u]: Printing how many representatives each BU level contains:\n", thr_id);
+		//	uint32_t i = 0;
+		//	for (const auto& BU_level : representatives)
+		//		printf("[thread %u]: %u BU level contains %lu representatives.\n", thr_id, i++, BU_level.size());
+
+		//	// Printing the representatives.
+		//	const unordered_map<uint32_t, vector<uint32_t>>& BU_level = representatives.back();
+		//	printf("[thread %u]: Printing last BU level.\n", thr_id);
+		//	for (const auto& pair : BU_level) {
+		//		cout << '{' << pair.first << ": ";
+
+		//		for (const auto& item : pair.second)
+		//			cout << item << ' ';
+
+		//		cout << '}' << endl;
+		//	}
+		//}
+
+		free(distances);
+
+		/***** Top down phase. *****/
+		const uint32_t n_topP = n_thr * P;
+		// How many representatives we have at the last level. Each thread has the same number.
+		const uint32_t n_representatives = representatives.back().size();
+		// A thread reserves memory for the last BU level's representatives for all threads.
+		#pragma omp single
+		{
+			//printf("[thread %u]: In single section reserving memory.\n", thr_id);
+			last_BU_level_representatives = (uint32_t*)malloc(n_representatives * n_thr * sizeof(uint32_t));
+			topP_pairs = (Pair*)malloc(n_thr * sizeof(Pair) * P);
+			from_cands = (uint32_t*)malloc(n_topP * sizeof(uint32_t) * partition_size + n_topP * sizeof(uint32_t));
+			to_cands = (uint32_t*)malloc(n_topP * sizeof(uint32_t) * partition_size + n_topP * sizeof(uint32_t));
+		}
+		//printf("[thread %u]: I have %u representatives at the last level.\n", thr_id, n_representatives);
+
+		// Each thread writes its last BU level's representatives to @last_BU_level_representatives.
+		uint32_t start_index = thr_id * n_representatives;
+		auto iter = representatives.back().begin();
+		for (uint32_t i = 0; i < n_representatives; ++i, ++iter)
+			last_BU_level_representatives[start_index + i] = iter->first;
+
+		// All threads must have written their representatives before proceeding.
+		#pragma omp barrier
+
+		//#pragma omp single
+		//{
+		//	printf("[thread %u]: Printing the last level's representatives.\n", thr_id);
+		//	for (uint32_t i = 0; i < n_representatives * n_thr; ++i)
+		//		printf("[thread %u]: last_BU_level_representatives[%u] = %u.\n", thr_id, i, last_BU_level_representatives[i]);
+		//}
+
+		// Each thread will take a weighted part and perform cross product.
+		// The total number of representatives we need to weightedly split.
+		const uint32_t total_representatives = n_thr * n_representatives;
+		const uint32_t repr_chunk_base_size = total_representatives / (n_thr * 2);
+		const uint32_t repr_chunk_one_more = total_representatives % (n_thr * 2);
+		// The two chunks that belong to this thread.
+		const uint32_t thr_head_chunk_index = thr_id * repr_chunk_base_size + min(thr_id, repr_chunk_one_more);
+		const uint32_t thr_head_chunk_size = repr_chunk_base_size + (thr_id < repr_chunk_one_more);
+		const uint32_t thr_tail_chunk_index = (n_thr * 2 - thr_id - 1) * repr_chunk_base_size + min(n_thr * 2 - thr_id - 1, repr_chunk_one_more);
+		const uint32_t thr_tail_chunk_size = repr_chunk_base_size + (n_thr * 2 - thr_id - 1 < repr_chunk_one_more);
+
+		//Pair cross_prod[thr_head_chunk_size * (total_representatives - 1)];
+
+		// The starting index of the thread's topP.
+		const uint32_t heap_start_index = thr_id * P;
+		uint32_t heap_size = 0;
+		// The thread's topP chunk. Treat it like a heap.
+		Pair *topP_heap = &(topP_pairs[heap_start_index]);
+
+		// Each thread knows the two chunks it owns. Perform the cross product.
+		Pair pair;
+		// Cross-product for the first chunk of the thread.
+		for (uint32_t i = 0; i < thr_head_chunk_size; ++i) {
+			for (uint32_t j = thr_head_chunk_index + i + 1; j < total_representatives; ++j) {
+				float distance = euclidean_distance_aprox(points[last_BU_level_representatives[thr_head_chunk_index + i]], points[last_BU_level_representatives[j]]);
+				pair = {points[last_BU_level_representatives[thr_head_chunk_index + i]].id, points[last_BU_level_representatives[j]].id, distance};
+
+				//printf("[thread %u]: From first chunk: from_id = %u, to_id = %u.\n", thr_id, pair.from_id, pair.to_id);
+
+				if (heap_size < P)
+					heap_insert(topP_heap, heap_size, pair);
+				else if (topP_heap[0].distance > distance) {
+					topP_heap[0] = pair;
+					heapify_subroot(topP_heap, heap_size, 0);
+				}
+			}
+		}
+
+		// Cross-product for the second chunk of thread.
+		for (uint32_t i = 0; i < thr_tail_chunk_size; ++i) {
+			for (uint32_t j = thr_tail_chunk_index + i + 1; j < total_representatives; ++j) {
+				float distance = euclidean_distance_aprox(points[last_BU_level_representatives[thr_tail_chunk_index + i]], points[last_BU_level_representatives[j]]);
+				pair = {points[last_BU_level_representatives[thr_tail_chunk_index + i]].id, points[last_BU_level_representatives[j]].id, distance};
+
+				//printf("[thread %u]: From second chunk: from_id = %u, to_id = %u.\n", thr_id, pair.from_id, pair.to_id);
+
+				if (heap_size < P)
+					heap_insert(topP_heap, heap_size, pair);
+				else if (topP_heap[0].distance > distance) {
+					topP_heap[0] = pair;
+					heapify_subroot(topP_heap, heap_size, 0);
+				}
+			}
+		}
+
+		#pragma omp barrier
+
+		//#pragma omp critical
+		//{
+		//printf("[thread %u]: My topP pairs are:\n", thr_id);
+		//for (uint32_t i = 0; i < P; ++i)
+		//	printf("[thread %u]: from_id = %u, to_id = %u, distance = %f.\n", thr_id, topP_heap[i].from_id, topP_heap[i].to_id, topP_heap[i].distance);
+		//}
+
+		// Heap for preparing the next TD iteration's BU and TD pairs.
+		// In the paper they are called "all_pairs".
+		Pair thr_heap[P];
+		uint32_t thr_heap_size = 0;
+		auto riter = representatives.rbegin();
+
+		while (riter != (representatives.rend() - 1)) {
+			unordered_map<uint32_t, vector<uint32_t>>& curr_BU_level = *riter;
+
+			// The topP pairs have been calculated. Time to populate their from and to candidates.
+			uint32_t ids_to_erase[n_representatives * 2];
+			uint32_t n_ids_to_erase = 0;
+
+			for (uint32_t i = 0; i < n_topP; ++i) {
+				if (curr_BU_level.count(topP_pairs[i].from_id)) {
+					//printf("[thread %u]: Yes! I know about %u. It represents %lu points.\n", thr_id, topP_pairs[i].from_id, curr_BU_level[topP_pairs[i].from_id].size());
+
+					memcpy(&from_cands[i * (partition_size + 1) + 1], curr_BU_level[topP_pairs[i].from_id].data(), sizeof(uint32_t) * curr_BU_level[topP_pairs[i].from_id].size());
+					from_cands[i * (partition_size + 1)] = curr_BU_level[topP_pairs[i].from_id].size();
+
+					ids_to_erase[n_ids_to_erase++] = curr_BU_level.count(topP_pairs[i].from_id);
+				}
+				if (curr_BU_level.count(topP_pairs[i].to_id)) {
+					//printf("[thread %u]: Yes! I know about %u. It represents %lu points.\n", thr_id, topP_pairs[i].to_id, curr_BU_level[topP_pairs[i].to_id].size());
+
+					memcpy(&to_cands[i * (partition_size + 1) + 1], curr_BU_level[topP_pairs[i].to_id].data(), sizeof(uint32_t) * curr_BU_level[topP_pairs[i].to_id].size());
+					to_cands[i * (partition_size + 1)] = curr_BU_level[topP_pairs[i].to_id].size();
+
+					ids_to_erase[n_ids_to_erase++] = curr_BU_level.count(topP_pairs[i].to_id);
+				}
+			}
+
+			#pragma omp barrier
+
+			for (uint32_t i = 0; i < n_ids_to_erase; ++i)
+				curr_BU_level.erase(ids_to_erase[i]);
+
+			// Print the from and to candidates of each topP pair.
+			//#pragma omp master
+			//{
+			//	printf("[thread %u]: ================================================================.\n", thr_id);
+			//	printf("[thread %u]: Printing the from candidates and to candidates of the topP pairs.\n", thr_id);
+			//	for (uint32_t i = 0; i < 8 * P; ++i) {
+			//		printf("[thread %u]: from_id = %u, to_id = %u, distance = %f.\n", thr_id, topP_pairs[i].from_id, topP_pairs[i].to_id, topP_pairs[i].distance);
+			//		const uint32_t n_from_cands = from_cands[i * (partition_size + 1)];
+			//		const uint32_t n_to_cands = to_cands[i * (partition_size + 1)];
+			//		printf("[thread %u]: from_cands contain %u indices.\n", thr_id, n_from_cands);
+			//		printf("[thread %u]: to_cands contain %u indices.\n", thr_id, n_to_cands);
+
+			//		//printf("[thread %u]: Printing the from candidates:\n", thr_id);
+			//		//for (uint32_t j = 0; j < n_from_cands; ++j)
+			//		//	printf("[thread %u]: from_cands[%u] = %u.\n", thr_id, j, from_cands[heap_start_index + i * (partition_size + 1) + 1 + j]);
+
+			//		//printf("[thread %u]: Printing the to candidates:\n", thr_id);
+			//		//for (uint32_t j = 0; j < n_to_cands; ++j)
+			//		//	printf("[thread %u]: to_cands[%u] = %u.\n", thr_id, j, to_cands[heap_start_index + i * (partition_size + 1) + 1 + j]);
+			//	}
+			//	printf("[thread %u]: ================================================================.\n", thr_id);
+			//}
+			//#pragma omp barrier
+
+			thr_heap_size = 0;
+
+			// Only representatives that don't exist in topP remain.
+			for (auto iter : curr_BU_level) {
+				for (uint32_t representee_index : iter.second) {
+					for (uint32_t c_neigh = 0; c_neigh < points[representee_index].n_neighbors; ++c_neigh) {
+						if (thr_heap_size < P)
+							heap_insert(thr_heap, thr_heap_size, points[representee_index].neighbors[c_neigh]);
+						if (points[representee_index].neighbors[c_neigh].distance < thr_heap[0].distance) {
+							thr_heap[0] = points[representee_index].neighbors[c_neigh];
+							heapify_subroot(thr_heap, thr_heap_size, 0);
+						}
+					}
+				}
+			}
+
+			// Barrier?
+
+			// Each thread will perform cross product between the from candidates and to candidates of the P topP pairs it calculated.
+			// The cross product is also performed in from/to candidates seperately.
+
+			for (uint32_t i = 0; i < P; ++i) {
+				// Perform the all pairs cross product on from candidates.
+				const uint32_t n_from_cands = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1)];
+				const uint32_t n_to_cands = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1)];
+				for (uint32_t i_cand = 0; i_cand < n_from_cands; ++i_cand) {
+					for (uint32_t j_cand = i + 1; j_cand < n_from_cands; ++j_cand) {
+						uint32_t from_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+						uint32_t to_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+						float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+						pair = {from_index, to_index, distance};
+
+						// Update next iteration's topP pairs calculated by this thread.
+						if (thr_heap_size < P)
+							heap_insert(thr_heap, thr_heap_size, pair);
+						else if (thr_heap[0].distance > pair.distance) {
+							thr_heap[0] = pair;
+							heapify_subroot(thr_heap, thr_heap_size, 0);
+						}
+
+						// Lock the from point to perform update.
+						omp_set_lock(&points[from_index].lock);
+						if (points[from_index].n_neighbors < 100)
+							heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+						else if (points[from_index].neighbors[0].distance > distance) {
+							points[from_index].neighbors[0] = pair;
+							heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[from_index].lock);
+
+						// Lock the to point to perform update.
+						pair = {to_index, from_index, distance};
+						omp_set_lock(&points[to_index].lock);
+						if (points[to_index].n_neighbors < 100)
+							heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+						else if (points[to_index].neighbors[0].distance > distance) {
+							points[to_index].neighbors[0] = pair;
+							heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[to_index].lock);
+					}
+				}
+
+				// Perform all pairs cross product on from-to candidates.
+				for (uint32_t i_cand = 0; i_cand < n_from_cands; ++i_cand) {
+					for (uint32_t j_cand = 0; j_cand < n_to_cands; ++j_cand) {
+						uint32_t from_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+						uint32_t to_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+						float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+						pair = {from_index, to_index, distance};
+
+						// Update next iteration's topP pairs calculated by this thread.
+						if (thr_heap_size < P)
+							heap_insert(thr_heap, thr_heap_size, pair);
+						else if (thr_heap[0].distance > pair.distance) {
+							thr_heap[0] = pair;
+							heapify_subroot(thr_heap, thr_heap_size, 0);
+						}
+
+						// Lock the from point to perform update.
+						omp_set_lock(&points[from_index].lock);
+						if (points[from_index].n_neighbors < 100)
+							heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+						else if (points[from_index].neighbors[0].distance > distance) {
+							points[from_index].neighbors[0] = pair;
+							heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[from_index].lock);
+
+						// Lock the to point to perform update.
+						pair = {to_index, from_index, distance};
+						omp_set_lock(&points[to_index].lock);
+						if (points[to_index].n_neighbors < 100)
+							heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+						else if (points[to_index].neighbors[0].distance > distance) {
+							points[to_index].neighbors[0] = pair;
+							heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[to_index].lock);
+					}
+				}
+
+				// Perform all pairs cross product on to candidates.
+				for (uint32_t i_cand = 0; i_cand < n_to_cands; ++i_cand) {
+					for (uint32_t j_cand = i + 1; j_cand < n_to_cands; ++j_cand) {
+						uint32_t from_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+						uint32_t to_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+						float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+						pair = {from_index, to_index, distance};
+
+						if (thr_heap_size < P)
+							heap_insert(thr_heap, thr_heap_size, pair);
+						else if (thr_heap[0].distance > pair.distance) {
+							thr_heap[0] = pair;
+							heapify_subroot(thr_heap, thr_heap_size, 0);
+						}
+
+						// Lock the from point to perform update.
+						omp_set_lock(&points[from_index].lock);
+						if (points[from_index].n_neighbors < 100)
+							heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+						else if (points[from_index].neighbors[0].distance > distance) {
+							points[from_index].neighbors[0] = pair;
+							heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[from_index].lock);
+
+						// Lock the to point to perform update.
+						pair = {to_index, from_index, distance};
+						omp_set_lock(&points[to_index].lock);
+						if (points[to_index].n_neighbors < 100)
+							heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+						else if (points[to_index].neighbors[0].distance > distance) {
+							points[to_index].neighbors[0] = pair;
+							heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+						}
+						omp_unset_lock(&points[to_index].lock);
+					}
+				}
+			}
+
+			// Write this thread's topP part to topP pairs.
+			memcpy(topP_heap, thr_heap, sizeof(Pair) * thr_heap_size);
+
+			//printf("[thread %u]: TD iteration complete. thr_heap_size = %u.\n", thr_id, thr_heap_size);
+
+			++riter;
+
+			#pragma omp barrier
+		}
+
+		//printf("[thread %u]: Threads' are joining.\n", thr_id);
+		unordered_map<uint32_t, vector<uint32_t>>& curr_BU_level = *riter;
+
+		// The topP pairs have been calculated. Time to populate their from and to candidates.
+
+		for (uint32_t i = 0; i < n_topP; ++i) {
+			if (curr_BU_level.count(topP_pairs[i].from_id)) {
+				//printf("[thread %u]: Yes! I know about %u. It represents %lu points.\n", thr_id, topP_pairs[i].from_id, curr_BU_level[topP_pairs[i].from_id].size());
+
+				memcpy(&from_cands[i * (partition_size + 1) + 1], curr_BU_level[topP_pairs[i].from_id].data(), sizeof(uint32_t) * curr_BU_level[topP_pairs[i].from_id].size());
+				from_cands[i * (partition_size + 1)] = curr_BU_level[topP_pairs[i].from_id].size();
+			}
+			if (curr_BU_level.count(topP_pairs[i].to_id)) {
+				//printf("[thread %u]: Yes! I know about %u. It represents %lu points.\n", thr_id, topP_pairs[i].to_id, curr_BU_level[topP_pairs[i].to_id].size());
+
+				memcpy(&to_cands[i * (partition_size + 1) + 1], curr_BU_level[topP_pairs[i].to_id].data(), sizeof(uint32_t) * curr_BU_level[topP_pairs[i].to_id].size());
+				to_cands[i * (partition_size + 1)] = curr_BU_level[topP_pairs[i].to_id].size();
+			}
+		}
+
+		#pragma omp barrier
+
+		for (uint32_t i = 0; i < P; ++i) {
+			// Perform the all pairs cross product on from candidates.
+			const uint32_t n_from_cands = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1)];
+			const uint32_t n_to_cands = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1)];
+			for (uint32_t i_cand = 0; i_cand < n_from_cands; ++i_cand) {
+				for (uint32_t j_cand = i + 1; j_cand < n_from_cands; ++j_cand) {
+					uint32_t from_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+					uint32_t to_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+					float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+					pair = {from_index, to_index, distance};
+
+					// Lock the from point to perform update.
+					omp_set_lock(&points[from_index].lock);
+					if (points[from_index].n_neighbors < 100)
+						heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+					else if (points[from_index].neighbors[0].distance > distance) {
+						points[from_index].neighbors[0] = pair;
+						heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[from_index].lock);
+
+					// Lock the to point to perform update.
+					pair = {to_index, from_index, distance};
+					omp_set_lock(&points[to_index].lock);
+					if (points[to_index].n_neighbors < 100)
+						heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+					else if (points[to_index].neighbors[0].distance > distance) {
+						points[to_index].neighbors[0] = pair;
+						heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[to_index].lock);
+				}
+			}
+
+			// Perform all pairs cross product on from-to candidates.
+			for (uint32_t i_cand = 0; i_cand < n_from_cands; ++i_cand) {
+				for (uint32_t j_cand = 0; j_cand < n_to_cands; ++j_cand) {
+					uint32_t from_index = from_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+					uint32_t to_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+					float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+					pair = {from_index, to_index, distance};
+
+					// Lock the from point to perform update.
+					omp_set_lock(&points[from_index].lock);
+					if (points[from_index].n_neighbors < 100)
+						heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+					else if (points[from_index].neighbors[0].distance > distance) {
+						points[from_index].neighbors[0] = pair;
+						heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[from_index].lock);
+
+					// Lock the to point to perform update.
+					pair = {to_index, from_index, distance};
+					omp_set_lock(&points[to_index].lock);
+					if (points[to_index].n_neighbors < 100)
+						heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+					else if (points[to_index].neighbors[0].distance > distance) {
+						points[to_index].neighbors[0] = pair;
+						heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[to_index].lock);
+				}
+			}
+
+			// Perform all pairs cross product on to candidates.
+			for (uint32_t i_cand = 0; i_cand < n_to_cands; ++i_cand) {
+				for (uint32_t j_cand = i + 1; j_cand < n_to_cands; ++j_cand) {
+					uint32_t from_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + i_cand];
+					uint32_t to_index = to_cands[heap_start_index * (partition_size + 1) + i * (partition_size + 1) + 1 + j_cand];
+
+					float distance = euclidean_distance_aprox(points[from_index], points[to_index]);
+
+					pair = {from_index, to_index, distance};
+
+					// Lock the from point to perform update.
+					omp_set_lock(&points[from_index].lock);
+					if (points[from_index].n_neighbors < 100)
+						heap_insert(points[from_index].neighbors, points[from_index].n_neighbors, pair);
+					else if (points[from_index].neighbors[0].distance > distance) {
+						points[from_index].neighbors[0] = pair;
+						heapify_subroot(points[from_index].neighbors, points[from_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[from_index].lock);
+
+					// Lock the to point to perform update.
+					pair = {to_index, from_index, distance};
+					omp_set_lock(&points[to_index].lock);
+					if (points[to_index].n_neighbors < 100)
+						heap_insert(points[to_index].neighbors, points[to_index].n_neighbors, pair);
+					else if (points[to_index].neighbors[0].distance > distance) {
+						points[to_index].neighbors[0] = pair;
+						heapify_subroot(points[to_index].neighbors, points[to_index].n_neighbors, 0);
+					}
+					omp_unset_lock(&points[to_index].lock);
+				}
+			}
+		}
 	}
+
+	free(last_BU_level_representatives);
+	free(topP_pairs);
+	free(from_cands);
+	free(to_cands);
 }
 
 //void bottom_up(Point *points, uint32_t n_points, uint32_t k,
@@ -540,11 +1031,11 @@ int main(void)
 
 	/* The hyperparameters of the problem (Table I). */
 	// The size of each partition per thread.
-	uint32_t partition_size = 1250;
+	uint32_t partition_size = 150;
 	// The number of clusters to create per partition.
-	uint32_t n_clusters = 1;
+	uint32_t n_clusters = 4;
 	// Number of top object pairs for each TD iteration.
-	uint32_t P = 5;
+	uint32_t P = 5000;
 
 	printf("Hyperparameters selected:\n");
 	printf("\tMinimum partition size = %u\n", partition_size);
@@ -555,18 +1046,13 @@ int main(void)
 	// The returned memory should be free'd.
 	auto [points, n_points] = read_dataset("dummy-data.bin");
 
-	//cout << "Printing dataset:" << endl;
-	//for (uint32_t c_point = 0; c_point < n_points; ++c_point)
-	//	for (uint32_t c_dim = 0; c_dim < 100; ++c_dim)
-	//		cout << c_point << "-th point's " << c_dim << "-th dimension = " << points[c_point].coordinates[c_dim] << endl;
-
 	// Perform near neighbor join algorithm.
 	printf("===== Near Neighbor Join (start) =====\n");
-	near_neighbor_join(points, n_points, partition_size, n_clusters);
+	near_neighbor_join(points, n_points, partition_size, n_clusters, P);
 	printf("===== Near Neighbor Join (exits) =====\n");
 
-	//for (uint32_t c_point = 0; c_point < n_points; ++c_point)
-		//cout << c_point << "-th point has " << points[c_point].n_neighbors << " neighbors." << endl;
+	//for (uint32_t i = 0; i < n_points; ++i)
+		//printf("%u-th point has %u neighbors.\n", i, points[i].n_neighbors);
 
 	// Write the knng to disk.
 	write_knng(points, n_points, "output.bin");
